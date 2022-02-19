@@ -1,3 +1,3 @@
 # Rockafellar-Uryasev Regression
 
-ERM method to deal with biased sampling.
+ERM method to deal with selection bias.
