@@ -1,1 +1,1 @@
-# ru_regression
+# Rockafellar-Uryasev Regression
