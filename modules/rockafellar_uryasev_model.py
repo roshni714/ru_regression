@@ -3,7 +3,7 @@ import pdb
 from pytorch_lightning.core.lightning import LightningModule
 
 
-class BasicModel(LightningModule):
+class RockafellarUryasevModel(LightningModule):
     def __init__(self, input_size, loss):
         super().__init__()
         self.alpha_net = torch.nn.Sequential(

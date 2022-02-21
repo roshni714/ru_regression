@@ -26,3 +26,8 @@ class RockafellarUryasevLoss:
             + (bound_up - bound_low) * torch.nn.functional.relu(loss_vals - alpha_out)
         )
         return torch.mean(ru_loss)
+
+class GenericLoss:
+
+    def __init__(self, loss):
+        self.loss = LOSS_DIC[loss]

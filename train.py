@@ -1,5 +1,5 @@
 from pytorch_lightning import Trainer, callbacks
-from modules import BasicModel
+from modules import BasicModel, RockafellarUryasevModel
 from data_loaders import (
     get_simulated_dataloaders,
 )
@@ -48,11 +48,15 @@ def objective(dataset, loss, gamma, seed, epochs, batch_size):
         name="logs/{}_{}_seed_{}".format(dataset, loss, seed),
     )
 
-    ru_objective = RockafellarUryasevLoss(
+    if method == "ru_regression":
+        module= RockafellarUryasevModel
+        loss_fn = RockafellarUryasevLoss(
         loss=loss, bound_function=get_bound_function(gamma)
-    )
-    module = BasicModel
-    model = module(input_size=input_size, loss=ru_objective)
+        )
+    elif method == "erm":
+        module = BasicModel
+        loss_fn = GenericLoss(loss=loss)
+    model = module(input_size=input_size, loss=loss_fn)
     trainer = Trainer(
         gpus=1,
         checkpoint_callback=checkpoint_callback,
@@ -75,6 +79,7 @@ def objective(dataset, loss, gamma, seed, epochs, batch_size):
 @argh.arg("--save", default="sim")
 
 # Loss
+@argh.arg("--method", default="ru_regression")
 @argh.arg("--loss", default="squared_loss")
 @argh.arg("--gamma", default=2.0)
 # Epochs
@@ -91,6 +96,7 @@ def main(
     model = objective(
         dataset=dataset,
         seed=seed,
+        method=method,
         loss=loss,
         gamma=gamma,
         epochs=epochs,
