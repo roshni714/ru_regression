@@ -1,1 +1,1 @@
-from data_loaders.simulated import get_simulated_dataloaders
+from data_loaders.simulated import get_shift_dataloaders

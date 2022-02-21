@@ -1,7 +1,7 @@
 from pytorch_lightning import Trainer, callbacks
 from modules import BasicModel, RockafellarUryasevModel
 from data_loaders import (
-    get_simulated_dataloaders,
+    get_shift_dataloaders,
 )
 from loss import RockafellarUryasevLoss
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -12,8 +12,8 @@ from reporting import report_results
 
 
 def get_dataset(dataset, seed, batch_size):
-    train, val, test, input_size = get_simulated_dataloaders(
-        dataset, seed=seed, batch_size=batch_size
+    train, val, test, input_size = get_shift_dataloaders(
+        dataset, seed=seed
     )
 
     return train, val, test, input_size
