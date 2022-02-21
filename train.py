@@ -1,0 +1,106 @@
+from pytorch_lightning import Trainer, callbacks
+from modules import (
+    BasicModel
+)
+from data_loaders import (
+    get_simulated_dataloaders,
+)
+from loss import RockafellarUryasevLoss
+from pytorch_lightning.loggers import TensorBoardLogger
+import numpy as np
+import os
+import argh
+from reporting import report_baseline_results
+
+
+def get_dataset(dataset, seed, batch_size):
+    train, val, test, input_size = get_simulated_dataloaders(
+            dataset,
+            seed=seed,
+            batch_size=batch_size,
+        )
+
+    return train, val, test, input_size, y_scale
+
+def get_bound_function(gamma):
+
+    def f(x, low=False, up=False):
+        if low and not up:
+            return 1/gamma
+        elif up and not low:
+            return gamma
+        else:
+            assert False, "bound function received invalid arguments x={}, low={}, upper={}".format(x, low, up)
+
+    return f
+
+def objective(dataset, loss, seed, epochs, batch_size):
+    train, val, test, input_size = get_dataset(
+        dataset, seed, batch_size
+    )
+    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
+            "models/{}_{}_seed_{}/".format(dataset, loss, seed),
+            monitor="val_loss",
+            save_top_k=1,
+            mode="min",
+        )
+    logger = TensorBoardLogger(
+        save_dir="runs", name="logs/{}_{}_seed_{}".format(dataset, loss, seed)
+    )
+
+    ru_objective = RockafellarUryasevLoss(loss=loss, bound_function=get_bound_function(gamma)) 
+    model = module(input_size=input_size, loss=ru_objective)
+    trainer = Trainer(
+        gpus=1,
+        checkpoint_callback=checkpoint_callback,
+        max_epochs=epochs,
+        logger=logger,
+        check_val_every_n_epoch=1,
+        log_every_n_steps=1,
+    )
+    trainer.fit(model, train_dataloader=train, val_dataloaders=val)
+    trainer.test(test_dataloaders=test)
+
+    return model
+
+
+# Dataset
+@argh.arg("--seed", default=0)
+@argh.arg("--train_frac", default=1.0)
+@argh.arg("--dataset", default="crime")
+@argh.arg("--batch_size", default=128)
+# Save
+@argh.arg("--save", default="real")
+
+# Loss
+@argh.arg("--loss", default="squared_loss")
+@argh.arg("--gamma", default=2)
+# Epochs
+@argh.arg("--epochs", default=40)
+def main(
+    dataset="crime",
+    seed=0,
+    save="baseline_experiments",
+    loss="gaussian_nll",
+    epochs=40,
+    train_frac=1.0,
+    batch_size=128,
+    resnet=True,
+):
+    print("resnet", resnet)
+    model = objective(
+        dataset,
+        loss=loss,
+        seed=seed,
+        epochs=epochs,
+        train_frac=train_frac,
+        batch_size=batch_size,
+        resnet=resnet,
+    )
+    report_baseline_results(model, dataset, train_frac, loss, seed, save)
+
+
+if __name__ == "__main__":
+    _parser = argh.ArghParser()
+    _parser.add_commands([main])
+    _parser.dispatch()
