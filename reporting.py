@@ -12,12 +12,16 @@ def write_result(results_file, result):
         dict_writer.writerow(result)
 
 
-def report_results(model, dataset, loss, gamma, seed, save, save_dir="results"):
+def report_results(model, dataset, method, loss, gamma, seed, save, save_dir="results"):
+    if method != "ru_regression":
+        gamma = None
     result = {
         "dataset": dataset,
-        "test_loss": model.test_loss,
-        "loss": loss,
+        "method": method,
         "gamma": gamma,
+        "loss": loss,
+        "test_loss": model.test_loss,
+        "test_mse": model.test_mse,
         "seed": seed,
     }
     results_file = save_dir + "/" + save + ".csv"

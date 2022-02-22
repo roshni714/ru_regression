@@ -1,5 +1,14 @@
 #!/bin/bash
 
-python train.py main --dataset simulated --method erm --epochs 200 --loss squared_loss --seed 0
-python train.py main --dataset simulated --method ru_regression --epochs 200 --loss squared_loss --gamma 2 --seed 0
+seeds=(0 1 2 3 4 5 6 6 8 9)
+gammas=(2 4 8 16)
+for SEED in "${seeds[@]}";
+do
+    python train.py main --dataset shifted --method erm --epochs 100 --loss squared_loss --seed $SEED --save sim2
+    python train.py main --dataset shifted_oracle --method erm --epochs 100 --loss squared_loss --seed $SEED  --save sim2
+    for GAMMA in "${gammas[@]}";
+    do
+        python train.py main --dataset shifted --method ru_regression --epochs 100 --loss squared_loss --gamma $GAMMA --seed $SEED --save sim2
+    done
+done
 

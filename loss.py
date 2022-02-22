@@ -27,7 +27,10 @@ class RockafellarUryasevLoss:
         )
         return torch.mean(ru_loss)
 
-class GenericLoss:
 
+class GenericLoss:
     def __init__(self, loss):
         self.loss = LOSS_DIC[loss]
+
+    def __call__(self, y_hat, y_true):
+        return torch.mean(self.loss(y_hat, y_true))

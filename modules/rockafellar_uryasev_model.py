@@ -1,6 +1,7 @@
 import torch
 import pdb
 from pytorch_lightning.core.lightning import LightningModule
+from loss import GenericLoss
 
 
 class RockafellarUryasevModel(LightningModule):
@@ -21,6 +22,7 @@ class RockafellarUryasevModel(LightningModule):
             torch.nn.Linear(100, 1),
         )
         self.loss = loss
+        self.squared_loss = GenericLoss("squared_loss")
 
     def forward(self, x):
         h_out = self.h_net(x)
@@ -31,7 +33,9 @@ class RockafellarUryasevModel(LightningModule):
         x, y = batch
         h_out, alpha_out = self(x)
         l = self.loss(x, y, h_out, alpha_out)
-        tensorboard_logs = {"train_loss": l}
+        tensorboard_logs = {"train_loss": l, "train_mse": self.squared_loss(h_out, y)}
+
+        self.log_dict(tensorboard_logs, on_epoch=True)
         return {"loss": l, "log": tensorboard_logs}
 
     def configure_optimizers(self):
@@ -42,7 +46,8 @@ class RockafellarUryasevModel(LightningModule):
         x, y = batch
         h_out, alpha_out = self(x)
         l = self.loss(x, y, h_out, alpha_out)
-        return {"val_loss": l}
+        dic = {"val_loss": l, "val_mse": self.squared_loss(h_out, y)}
+        return dic
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
@@ -50,6 +55,8 @@ class RockafellarUryasevModel(LightningModule):
         for key in outputs[0]:
             cal = torch.stack([x[key] for x in outputs]).mean()
             tensorboard_logs[key] = cal
+        self.log_dict(tensorboard_logs)
+
         return {"val_loss": avg_loss, "log": tensorboard_logs}
 
     def test_step(self, batch, batch_idx):
@@ -57,6 +64,7 @@ class RockafellarUryasevModel(LightningModule):
         h_out, alpha_out = self(x)
         dic = {
             "test_loss": self.loss(x, y, h_out, alpha_out),
+            "test_mse": self.squared_loss(h_out, y),
         }
         return dic
 
