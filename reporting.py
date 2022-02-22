@@ -13,7 +13,7 @@ def write_result(results_file, result):
 
 
 def report_regression(
-    model, dataset, method, loss, gammas, seed, save, X, y, save_dir="results"
+    dataset, method, loss, gamma, seed, save, X, y, save_dir="results"
 ):
     if method != "ru_regression":
         gamma = 1
@@ -25,7 +25,7 @@ def report_regression(
         save_dir
         + "/"
         + save
-        + "_{}_{}_{}_{}".format(dataset, method, gamma, loss)
+        + "_{}_{}_{}_{}_seed_{}".format(dataset, method, gamma, loss, seed)
         + ".csv"
     )
 

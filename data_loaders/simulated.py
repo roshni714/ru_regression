@@ -11,13 +11,14 @@ def standardize(data):
     return data, mu, scale
 
 
-def generate_shift_dataset(n, p_d1):
+def generate_shift_dataset(n, p_d1, seed):
+    rng = np.random.RandomState(seed)
     n_d1 = int(n * p_d1)
     n_d2 = n - n_d1
-    xs_d1 = np.random.uniform(0.0, 10.0, n_d1)
-    ys_d1 = np.sqrt(xs_d1) + np.random.normal(0.0, 1.0, n_d1)
-    xs_d2 = np.random.uniform(0.0, 10.0, n_d2)
-    ys_d2 = 4 * np.sqrt(xs_d2) + 1 + np.random.normal(0.0, 1.0, n_d2)
+    xs_d1 = rng.uniform(0.0, 10.0, n_d1)
+    ys_d1 = np.sqrt(xs_d1) + rng.normal(0.0, 1.0, n_d1)
+    xs_d2 = rng.uniform(0.0, 10.0, n_d2)
+    ys_d2 = 4 * np.sqrt(xs_d2) + 1 + rng.normal(0.0, 1.0, n_d2)
 
     xs = np.hstack((xs_d1, xs_d2))
     ys = np.hstack((ys_d1, ys_d2))
@@ -26,18 +27,20 @@ def generate_shift_dataset(n, p_d1):
 
 
 def get_shift_dataloaders(dataset, seed):
-    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.8)
-    X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5)
-    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5)
-
+    X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5, seed=seed)
+    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed+1)
+    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.8, seed=seed+2)
+    print(X_test[0])
+    print(X_val[0])
     return get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed)
 
 
 def get_shift_oracle_dataloaders(dataset, seed):
-    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.5)
-    X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5)
-    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5)
-
+    X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5, seed=seed)
+    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed+1)
+    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.5, seed=seed+2)
+    print(X_test[0])
+    print(X_val[0])
     return get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed)
 
 
@@ -49,6 +52,8 @@ def get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed):
     X_val = (X_val - x_train_mu) / x_train_scale
     y_val = (y_val - y_train_mu) / y_train_scale
 
+    y_train_mu = y_train_mu.item()
+    y_train_scale = y_train_scale.item()
     train = TensorDataset(
         torch.Tensor(X_train),
         torch.Tensor(y_train),

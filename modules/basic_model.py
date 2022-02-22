@@ -5,7 +5,7 @@ from loss import GenericLoss
 
 
 class BasicModel(LightningModule):
-    def __init__(self, input_size, loss):
+    def __init__(self, input_size, loss, y_mean, y_scale):
         super().__init__()
         self.net = torch.nn.Sequential(
             torch.nn.Linear(input_size, 100),
@@ -15,7 +15,7 @@ class BasicModel(LightningModule):
             torch.nn.Linear(100, 1),
         )
         self.loss = loss
-        self.squared_loss = GenericLoss("squared_loss")
+        self.squared_loss = GenericLoss("squared_loss", y_mean, y_scale)
 
     def forward(self, x):
         y_hat = self.net(x)

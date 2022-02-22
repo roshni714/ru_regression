@@ -6,35 +6,9 @@ from data_loaders import (
 )
 from reporting import report_regression
 import argh
-
-
-def get_dataset(dataset, seed):
-
-    if dataset == "shifted":
-        (
-            train,
-            val,
-            test,
-            input_size,
-            X_mean,
-            X_std,
-            y_mean,
-            y_std,
-        ) = get_shift_dataloaders(dataset, seed=seed)
-    elif dataset == "shifted_oracle":
-        (
-            train,
-            val,
-            test,
-            input_size,
-            X_mean,
-            X_std,
-            y_mean,
-            y_std,
-        ) = get_shift_oracle_dataloaders(dataset, seed=seed)
-
-    return train, val, test, input_size, X_mean, X_std, y_mean, y_std
-
+from utils import get_bound_function, get_dataset
+from loss import RockafellarUryasevLoss, GenericLoss
+import numpy as np
 
 # Dataset
 @argh.arg("--dataset", default="simulated")
@@ -58,29 +32,38 @@ def main(
     #    batch_size=128,
 ):
 
-    _, _, _, _, X_mean, X_std, y_mean, y_std = get_dataset(dataset, seed)
+    _, _, _, input_size, X_mean, X_std, y_mean, y_std = get_dataset(dataset, seed)
 
     if method == "ru_regression":
         module = RockafellarUryasevModel
+        loss_fn = RockafellarUryasevLoss(
+            loss=loss, bound_function=get_bound_function(gamma)
+        )
         save_path = "/scratch/users/rsahoo/models/{}_{}_{}_{}_seed_{}.ckpt".format(
             dataset, method, int(gamma), loss, seed
         )
 
     elif method == "erm":
         module = BasicModel
+        loss_fn = GenericLoss(loss=loss)
         save_path = "/scratch/users/rsahoo/models/{}_{}_{}_seed_{}.ckpt".format(
             dataset, method, loss, seed
         )
 
-    model = module.load_from_checkpoint(save_path)
+    model = module.load_from_checkpoint(save_path, input_size=input_size, loss=loss_fn)
 
     X = np.linspace(0.0, 10.0, 100)
     r_X = (X - X_mean) / X_std
     r_X = torch.Tensor(r_X.reshape(-1, 1))
-
-    r_y = model(r_X)
+    print(X)
+    if method=="ru_regression":
+        r_y, _= model(r_X)
+        r_y = r_y.detach().numpy()
+    else:
+        r_y = model(r_X).detach().numpy()
+    print(r_y)
     y = r_y * y_std + y_mean
-
+    print(y)
     report_regression(
         dataset=dataset,
         seed=seed,

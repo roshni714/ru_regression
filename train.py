@@ -1,49 +1,18 @@
 from pytorch_lightning import Trainer, callbacks
 from modules import BasicModel, RockafellarUryasevModel
-from data_loaders import (
-    get_shift_dataloaders,
-    get_shift_oracle_dataloaders,
-)
+
 from loss import RockafellarUryasevLoss, GenericLoss
 from pytorch_lightning.loggers import TensorBoardLogger
 import numpy as np
 import os
 import argh
 from reporting import report_results
+from utils import get_bound_function, get_dataset
 
-
-def get_dataset(dataset, seed):
-
-    if dataset == "shifted":
-        train, val, test, input_size, _, _, _, _ = get_shift_dataloaders(
-            dataset, seed=seed
-        )
-    elif dataset == "shifted_oracle":
-        train, val, test, input_size, _, _, _, _ = get_shift_oracle_dataloaders(
-            dataset, seed=seed
-        )
-
-    return train, val, test, input_size
-
-
-def get_bound_function(gamma):
-    def f(x, low=False, up=False):
-        if low and not up:
-            return 1 / gamma
-        elif up and not low:
-            return gamma
-        else:
-            assert (
-                False
-            ), "bound function received invalid arguments x={}, low={}, upper={}".format(
-                x, low, up
-            )
-
-    return f
 
 
 def objective(dataset, method, loss, gamma, seed, epochs):
-    train, val, test, input_size = get_dataset(dataset, seed)
+    train, val, test, input_size, X_mean, X_std, y_mean, y_std= get_dataset(dataset, seed)
     #    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
     #        ),
     #        monitor="val_loss",
@@ -74,7 +43,7 @@ def objective(dataset, method, loss, gamma, seed, epochs):
             dataset, method, loss, seed
         )
 
-    model = module(input_size=input_size, loss=loss_fn)
+    model = module(input_size=input_size, loss=loss_fn, y_mean=y_mean, y_scale=y_std)
     trainer = Trainer(
         gpus=1,
         #       checkpoint_callback=checkpoint_callback,

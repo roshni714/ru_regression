@@ -5,7 +5,7 @@ from loss import GenericLoss
 
 
 class RockafellarUryasevModel(LightningModule):
-    def __init__(self, input_size, loss):
+    def __init__(self, input_size, loss, y_mean, y_scale):
         super().__init__()
         self.alpha_net = torch.nn.Sequential(
             torch.nn.Linear(input_size, 100),
@@ -22,7 +22,7 @@ class RockafellarUryasevModel(LightningModule):
             torch.nn.Linear(100, 1),
         )
         self.loss = loss
-        self.squared_loss = GenericLoss("squared_loss")
+        self.squared_loss = GenericLoss("squared_loss", y_mean=y_mean, y_scale=y_scale)
 
     def forward(self, x):
         h_out = self.h_net(x)
