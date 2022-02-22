@@ -15,9 +15,13 @@ from reporting import report_results
 def get_dataset(dataset, seed):
 
     if dataset == "shifted":
-        train, val, test, input_size = get_shift_dataloaders(dataset, seed=seed)
+        train, val, test, input_size, _, _, _, _ = get_shift_dataloaders(
+            dataset, seed=seed
+        )
     elif dataset == "shifted_oracle":
-        train, val, test, input_size = get_shift_oracle_dataloaders(dataset, seed=seed)
+        train, val, test, input_size, _, _, _, _ = get_shift_oracle_dataloaders(
+            dataset, seed=seed
+        )
 
     return train, val, test, input_size
 
@@ -40,14 +44,12 @@ def get_bound_function(gamma):
 
 def objective(dataset, method, loss, gamma, seed, epochs):
     train, val, test, input_size = get_dataset(dataset, seed)
-    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
-        "/scratch/users/rsahoo/models/{}_{}_{}_seed_{}/".format(
-            dataset, method, loss, seed
-        ),
-        monitor="val_loss",
-        save_top_k=1,
-        mode="min",
-    )
+    #    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
+    #        ),
+    #        monitor="val_loss",
+    #        save_top_k=1,
+    #        mode="min",
+    #    )
 
     if method == "ru_regression":
         module = RockafellarUryasevModel
@@ -58,12 +60,18 @@ def objective(dataset, method, loss, gamma, seed, epochs):
             save_dir="/scratch/users/rsahoo/runs",
             name="logs/{}_{}_{}_{}_seed_{}".format(dataset, method, gamma, loss, seed),
         )
+        save_path = "/scratch/users/rsahoo/models/{}_{}_{}_{}_seed_{}.ckpt".format(
+            dataset, method, int(gamma), loss, seed
+        )
     elif method == "erm":
         module = BasicModel
         loss_fn = GenericLoss(loss=loss)
         logger = TensorBoardLogger(
             save_dir="/scratch/users/rsahoo/runs",
             name="logs/{}_{}_{}_seed_{}".format(dataset, method, loss, seed),
+        )
+        save_path = "/scratch/users/rsahoo/models/{}_{}_{}_seed_{}.ckpt".format(
+            dataset, method, loss, seed
         )
 
     model = module(input_size=input_size, loss=loss_fn)
@@ -77,7 +85,7 @@ def objective(dataset, method, loss, gamma, seed, epochs):
     )
     trainer.fit(model, train_dataloader=train, val_dataloaders=val)
     trainer.test(test_dataloaders=test)
-
+    trainer.save_checkpoint(save_path)
     return model
 
 

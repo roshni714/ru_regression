@@ -72,4 +72,8 @@ def get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed):
         val_loader,
         test_loader,
         X_train[0].shape[0],
+        x_train_mu,
+        x_train_scale,
+        y_train_mu,
+        y_train_scale,
     )
