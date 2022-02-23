@@ -50,20 +50,19 @@ def main(
             dataset, method, loss, seed
         )
 
-    model = module.load_from_checkpoint(save_path, input_size=input_size, loss=loss_fn)
+    model = module.load_from_checkpoint(
+        save_path, input_size=input_size, loss=loss_fn, y_mean=y_mean, y_scale=y_std
+    )
 
     X = np.linspace(0.0, 10.0, 100)
     r_X = (X - X_mean) / X_std
     r_X = torch.Tensor(r_X.reshape(-1, 1))
-    print(X)
-    if method=="ru_regression":
-        r_y, _= model(r_X)
+    if method == "ru_regression":
+        r_y, _ = model(r_X)
         r_y = r_y.detach().numpy()
     else:
         r_y = model(r_X).detach().numpy()
-    print(r_y)
     y = r_y * y_std + y_mean
-    print(y)
     report_regression(
         dataset=dataset,
         seed=seed,

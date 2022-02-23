@@ -28,19 +28,15 @@ def generate_shift_dataset(n, p_d1, seed):
 
 def get_shift_dataloaders(dataset, seed):
     X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5, seed=seed)
-    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed+1)
-    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.8, seed=seed+2)
-    print(X_test[0])
-    print(X_val[0])
+    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed + 1)
+    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.8, seed=seed + 2)
     return get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed)
 
 
 def get_shift_oracle_dataloaders(dataset, seed):
     X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5, seed=seed)
-    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed+1)
-    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.5, seed=seed+2)
-    print(X_test[0])
-    print(X_val[0])
+    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed + 1)
+    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.5, seed=seed + 2)
     return get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed)
 
 

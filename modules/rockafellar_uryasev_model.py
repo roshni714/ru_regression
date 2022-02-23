@@ -8,18 +8,18 @@ class RockafellarUryasevModel(LightningModule):
     def __init__(self, input_size, loss, y_mean, y_scale):
         super().__init__()
         self.alpha_net = torch.nn.Sequential(
-            torch.nn.Linear(input_size, 100),
-            torch.nn.ReLU(),
-            torch.nn.Linear(100, 100),
-            torch.nn.ReLU(),
-            torch.nn.Linear(100, 1),
+            torch.nn.Linear(input_size, 64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(64, 64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(64, 1),
         )
         self.h_net = torch.nn.Sequential(
-            torch.nn.Linear(input_size, 100),
-            torch.nn.ReLU(),
-            torch.nn.Linear(100, 100),
-            torch.nn.ReLU(),
-            torch.nn.Linear(100, 1),
+            torch.nn.Linear(input_size, 64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(64, 64),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(64, 1),
         )
         self.loss = loss
         self.squared_loss = GenericLoss("squared_loss", y_mean=y_mean, y_scale=y_scale)

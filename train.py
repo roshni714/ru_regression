@@ -10,9 +10,10 @@ from reporting import report_results
 from utils import get_bound_function, get_dataset
 
 
-
 def objective(dataset, method, loss, gamma, seed, epochs):
-    train, val, test, input_size, X_mean, X_std, y_mean, y_std= get_dataset(dataset, seed)
+    train, val, test, input_size, X_mean, X_std, y_mean, y_std = get_dataset(
+        dataset, seed
+    )
     #    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
     #        ),
     #        monitor="val_loss",
