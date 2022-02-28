@@ -33,17 +33,21 @@ def report_regression(
         write_result(results_file, all_res[i])
 
 
-def report_results(model, dataset, method, loss, gamma, seed, save, save_dir="results"):
+def report_results(
+    results, dataset, p_train, method, loss, gamma, seed, save, save_dir="results"
+):
     if method != "ru_regression":
         gamma = 1
-    result = {
-        "dataset": dataset,
-        "method": method,
-        "gamma": gamma,
-        "loss": loss,
-        "test_loss": model.test_loss,
-        "test_mse": model.test_mse,
-        "seed": seed,
-    }
     results_file = save_dir + "/" + save + ".csv"
-    write_result(results_file, result)
+
+    for i in range(len(results)):
+        full_result = {
+            "dataset": dataset,
+            "p_train": p_train,
+            "method": method,
+            "gamma": gamma,
+            "loss": loss,
+            "seed": seed,
+        }
+        full_result.update(results[i])
+        write_result(results_file, full_result)

@@ -9,16 +9,16 @@ class RockafellarUryasevModel(LightningModule):
         super().__init__()
         self.alpha_net = torch.nn.Sequential(
             torch.nn.Linear(input_size, 64),
-            torch.nn.LeakyReLU(),
+            torch.nn.ReLU(),
             torch.nn.Linear(64, 64),
-            torch.nn.LeakyReLU(),
+            torch.nn.ReLU(),
             torch.nn.Linear(64, 1),
         )
         self.h_net = torch.nn.Sequential(
             torch.nn.Linear(input_size, 64),
-            torch.nn.LeakyReLU(),
+            torch.nn.ReLU(),
             torch.nn.Linear(64, 64),
-            torch.nn.LeakyReLU(),
+            torch.nn.ReLU(),
             torch.nn.Linear(64, 1),
         )
         self.loss = loss
@@ -74,7 +74,6 @@ class RockafellarUryasevModel(LightningModule):
         for key in outputs[0]:
             cal = torch.stack([x[key] for x in outputs]).mean()
             tensorboard_logs[key] = cal
-            setattr(self, key, float(cal))
         self.log_dict(tensorboard_logs)
         return {
             "test_loss": avg_loss,

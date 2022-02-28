@@ -11,40 +11,50 @@ def standardize(data):
     return data, mu, scale
 
 
-def generate_shift_dataset(n, p_d1, seed):
+def generate_shift_dataset(n, p, seed):
     rng = np.random.RandomState(seed)
-    n_d1 = int(n * p_d1)
-    n_d2 = n - n_d1
-    xs_d1 = rng.uniform(0.0, 10.0, n_d1)
-    ys_d1 = np.sqrt(xs_d1) + rng.normal(0.0, 1.0, n_d1)
-    xs_d2 = rng.uniform(0.0, 10.0, n_d2)
-    ys_d2 = 4 * np.sqrt(xs_d2) + 1 + rng.normal(0.0, 1.0, n_d2)
+    us = rng.binomial(n=1, p=p, size=n)
+    xs = rng.uniform(0.0, 10.0, size=n)
+    noise = rng.normal(0.0, 1.0, size=n)
+    ys = np.sqrt(xs) + (np.sqrt(xs) * 3 + 1) * us + noise
 
-    xs = np.hstack((xs_d1, xs_d2))
-    ys = np.hstack((ys_d1, ys_d2))
-
-    return xs.reshape(-1, 1), ys
+    return xs.reshape(-1, 1), ys.reshape(-1, 1)
 
 
-def get_shift_dataloaders(dataset, seed):
-    X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5, seed=seed)
-    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed + 1)
-    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.8, seed=seed + 2)
-    return get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed)
+def get_shift_dataloaders(dataset, seed, p_train, p_test_lo, p_test_hi, n_test_sweep):
+    X_val, y_val = generate_shift_dataset(n=2000, p=p_train, seed=seed)
+
+    p_tests = np.linspace(p_test_lo, p_test_hi, n_test_sweep)
+    if n_test_sweep == 1:
+        p_tests = [p_test_lo]
+    X_tests = []
+    y_tests = []
+    for p_test in p_tests:
+        X_test, y_test = generate_shift_dataset(n=1000, p=p_test, seed=seed + 1)
+        X_tests.append(X_test)
+        y_tests.append(y_test)
+
+    X_train, y_train = generate_shift_dataset(n=7000, p=p_train, seed=seed + 2)
+    return (
+        get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests, seed),
+        p_tests,
+    )
 
 
-def get_shift_oracle_dataloaders(dataset, seed):
-    X_val, y_val = generate_shift_dataset(n=2000, p_d1=0.5, seed=seed)
-    X_test, y_test = generate_shift_dataset(n=1000, p_d1=0.5, seed=seed + 1)
-    X_train, y_train = generate_shift_dataset(n=7000, p_d1=0.5, seed=seed + 2)
-    return get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed)
+# def get_shift_oracle_dataloaders(dataset, seed, p_train):
+#    X_val, y_val = generate_shift_dataset(n=2000, p=p_train, seed=seed)
+#    X_test, y_test = generate_shift_dataset(n=1000, p=p_train, seed=seed + 1)
+#    X_train, y_train = generate_shift_dataset(n=7000, p=p_train, seed=seed + 2)
+#    return get_dataloaders(X_train, y_train, X_val, y_val, [X_test], [y_test], seed)
 
 
-def get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed):
+def get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests, seed):
     X_train, x_train_mu, x_train_scale = standardize(X_train)
-    X_test = (X_test - x_train_mu) / x_train_scale
     y_train, y_train_mu, y_train_scale = standardize(y_train)
-    y_test = (y_test - y_train_mu) / y_train_scale
+    for i in range(len(y_tests)):
+        y_tests[i] = (y_tests[i] - y_train_mu) / y_train_scale
+        X_tests[i] = (X_tests[i] - x_train_mu) / x_train_scale
+
     X_val = (X_val - x_train_mu) / x_train_scale
     y_val = (y_val - y_train_mu) / y_train_scale
 
@@ -60,18 +70,21 @@ def get_dataloaders(X_train, y_train, X_val, y_val, X_test, y_test, seed):
         torch.Tensor(y_val),
     )
 
-    test = TensorDataset(
-        torch.Tensor(X_test),
-        torch.Tensor(y_test),
-    )
+    test_loaders = []
+    for i in range(len(y_tests)):
+        test = TensorDataset(
+            torch.Tensor(X_tests[i]),
+            torch.Tensor(y_tests[i]),
+        )
+        test_loader = DataLoader(test, batch_size=len(test), shuffle=False)
+        test_loaders.append(test_loader)
 
     train_loader = DataLoader(train, batch_size=1000, shuffle=True)
     val_loader = DataLoader(val, batch_size=len(val), shuffle=False)
-    test_loader = DataLoader(test, batch_size=len(test), shuffle=False)
     return (
         train_loader,
         val_loader,
-        test_loader,
+        test_loaders,
         X_train[0].shape[0],
         x_train_mu,
         x_train_scale,

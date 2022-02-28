@@ -12,6 +12,7 @@ import numpy as np
 
 # Dataset
 @argh.arg("--dataset", default="simulated")
+@argh.arg("--p_test", default="simulated")
 # @argh.arg("--batch_size", default=128)
 @argh.arg("--seed", default=0)
 # Save

@@ -10,9 +10,20 @@ from reporting import report_results
 from utils import get_bound_function, get_dataset
 
 
-def objective(dataset, method, loss, gamma, seed, epochs):
-    train, val, test, input_size, X_mean, X_std, y_mean, y_std = get_dataset(
-        dataset, seed
+def objective(
+    dataset,
+    p_train,
+    p_test_lo,
+    p_test_hi,
+    n_test_sweep,
+    method,
+    loss,
+    gamma,
+    seed,
+    epochs,
+):
+    train, val, tests, input_size, X_mean, X_std, y_mean, y_std, p_tests = get_dataset(
+        dataset, p_train, p_test_lo, p_test_hi, n_test_sweep, seed
     )
     #    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
     #        ),
@@ -28,20 +39,28 @@ def objective(dataset, method, loss, gamma, seed, epochs):
         )
         logger = TensorBoardLogger(
             save_dir="/scratch/users/rsahoo/runs",
-            name="logs/{}_{}_{}_{}_seed_{}".format(dataset, method, gamma, loss, seed),
+            name="logs/{}_{}_{}_{}_p_train_{}_seed_{}".format(
+                dataset, method, gamma, loss, p_train, seed
+            ),
         )
-        save_path = "/scratch/users/rsahoo/models/{}_{}_{}_{}_seed_{}.ckpt".format(
-            dataset, method, int(gamma), loss, seed
+        save_path = (
+            "/scratch/users/rsahoo/models/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+                dataset, method, int(gamma), loss, p_train, seed
+            )
         )
     elif method == "erm":
         module = BasicModel
         loss_fn = GenericLoss(loss=loss)
         logger = TensorBoardLogger(
             save_dir="/scratch/users/rsahoo/runs",
-            name="logs/{}_{}_{}_seed_{}".format(dataset, method, loss, seed),
+            name="logs/{}_{}_{}_p_train_{}_seed_{}".format(
+                dataset, method, loss, p_train, seed
+            ),
         )
-        save_path = "/scratch/users/rsahoo/models/{}_{}_{}_seed_{}.ckpt".format(
-            dataset, method, loss, seed
+        save_path = (
+            "/scratch/users/rsahoo/models/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+                dataset, method, loss, p_train, seed
+            )
         )
 
     model = module(input_size=input_size, loss=loss_fn, y_mean=y_mean, y_scale=y_std)
@@ -54,13 +73,21 @@ def objective(dataset, method, loss, gamma, seed, epochs):
         log_every_n_steps=1,
     )
     trainer.fit(model, train_dataloader=train, val_dataloaders=val)
-    trainer.test(test_dataloaders=test)
+    res = []
+    for i, test_loader in enumerate(tests):
+        all_res = trainer.test(test_dataloaders=test_loader)
+        all_res[0]["p_test"] = p_tests[i]
+        res.append(all_res[0])
     trainer.save_checkpoint(save_path)
-    return model
+    return res
 
 
 # Dataset
 @argh.arg("--dataset", default="simulated")
+@argh.arg("--p_train", default=0.2)
+@argh.arg("--p_test_lo", default=0.1)
+@argh.arg("--p_test_hi", default=0.8)
+@argh.arg("--n_test_sweep", default=5)
 # @argh.arg("--batch_size", default=128)
 @argh.arg("--seed", default=0)
 # Save
@@ -69,21 +96,29 @@ def objective(dataset, method, loss, gamma, seed, epochs):
 # Loss
 @argh.arg("--method", default="ru_regression")
 @argh.arg("--loss", default="squared_loss")
-@argh.arg("--gamma", default=2.0)
+@argh.arg("--gamma", default=1.0)
 # Epochs
 @argh.arg("--epochs", default=40)
 def main(
     dataset="simulated",
+    p_train=0.2,
+    p_test_lo=0.1,
+    p_test_hi=0.8,
+    n_test_sweep=5,
     seed=0,
     save="baseline_experiments",
     method="ru_regression",
     loss="squared_loss",
-    gamma=2.0,
+    gamma=1.0,
     epochs=40,
     #    batch_size=128,
 ):
-    model = objective(
+    res = objective(
         dataset=dataset,
+        p_train=p_train,
+        p_test_lo=p_test_lo,
+        p_test_hi=p_test_hi,
+        n_test_sweep=n_test_sweep,
         seed=seed,
         method=method,
         loss=loss,
@@ -91,7 +126,16 @@ def main(
         epochs=epochs,
         #        batch_size=batch_size,
     )
-    report_results(model, dataset, method, loss, gamma, seed, save)
+    report_results(
+        results=res,
+        dataset=dataset,
+        p_train=p_train,
+        method=method,
+        loss=loss,
+        gamma=gamma,
+        seed=seed,
+        save=save,
+    )
 
 
 if __name__ == "__main__":

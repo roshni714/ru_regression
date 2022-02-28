@@ -16,8 +16,8 @@ class RockafellarUryasevLoss:
         self.bound_function = bound_function
 
     def __call__(self, x, y, h_out, alpha_out):
-        y = y.reshape(h_out.shape)
         assert y.shape == h_out.shape
+        assert y.shape == alpha_out.shape
         bound_low = self.bound_function(x, low=True)
         bound_up = self.bound_function(x, up=True)
 
@@ -38,7 +38,7 @@ class GenericLoss:
         self.y_scale = y_scale
 
     def __call__(self, y_hat, y_true):
-        y_true = y_true.reshape(y_hat.shape)
+        assert y_hat.shape == y_true.shape
         if self.y_mean and self.y_scale:
             rescale_y_hat = self.y_scale * y_hat + self.y_mean
             rescale_y_true = self.y_scale * y_true + self.y_mean

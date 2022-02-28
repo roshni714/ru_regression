@@ -1,6 +1,5 @@
 from data_loaders import (
     get_shift_dataloaders,
-    get_shift_oracle_dataloaders,
 )
 
 
@@ -20,7 +19,7 @@ def get_bound_function(gamma):
     return f
 
 
-def get_dataset(dataset, seed):
+def get_dataset(dataset, p_train, p_test_lo, p_test_hi, n_test_sweep, seed):
 
     if dataset == "shifted":
         (
@@ -32,17 +31,27 @@ def get_dataset(dataset, seed):
             X_std,
             y_mean,
             y_std,
-        ) = get_shift_dataloaders(dataset, seed=seed)
-    elif dataset == "shifted_oracle":
-        (
-            train,
-            val,
-            test,
-            input_size,
-            X_mean,
-            X_std,
-            y_mean,
-            y_std,
-        ) = get_shift_oracle_dataloaders(dataset, seed=seed)
+        ), p_tests = get_shift_dataloaders(
+            dataset,
+            p_train=p_train,
+            p_test_lo=p_test_lo,
+            p_test_hi=p_test_hi,
+            n_test_sweep=n_test_sweep,
+            seed=seed,
+        )
+    #    elif dataset == "shifted_oracle":
+    # oracle dataset has p_test = p_train
+    #        (
+    #            train,
+    #          val,
+    #         test,
+    #         input_size,
+    #         X_mean,
+    #          X_std,
+    #          y_mean,
+    #          y_std,
+    #      ) = get_shift_oracle_dataloaders(
+    #          dataset, p_train=p_test, p_test=p_test, seed=seed
+    #      )
 
-    return train, val, test, input_size, X_mean, X_std, y_mean, y_std
+    return train, val, test, input_size, X_mean, X_std, y_mean, y_std, p_tests
