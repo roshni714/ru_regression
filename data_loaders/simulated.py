@@ -48,6 +48,9 @@ def get_shift_one_dim_dataloaders(
 
 
 def generate_shift_high_dim_dataset(n, d, p, seed):
+    """
+    Simple hyperplane experiment
+    """
     rng = np.random.RandomState(seed)
     us = rng.binomial(n=1, p=p, size=n).reshape(n, 1, 1)
     xs = rng.uniform(0.0, 1.0, size=(n * d)).reshape(n, d, 1)
