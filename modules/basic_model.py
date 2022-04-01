@@ -8,14 +8,14 @@ class BasicModel(LightningModule):
     def __init__(self, input_size, loss, y_mean, y_scale):
         super().__init__()
         self.net = torch.nn.Sequential(
-            torch.nn.Linear(input_size, 64),
+            torch.nn.Linear(input_size, 128),
             torch.nn.ReLU(),
-            torch.nn.Linear(64, 64),
+            torch.nn.Linear(128, 128),
             torch.nn.ReLU(),
-            torch.nn.Linear(64, 1),
+            torch.nn.Linear(128, 1),
         )
         self.loss = loss
-        self.squared_loss = GenericLoss("squared_loss", y_mean, y_scale)
+        self.mse = GenericLoss("squared_loss", y_mean, y_scale)
 
     def forward(self, x):
         y_hat = self.net(x)
@@ -25,21 +25,21 @@ class BasicModel(LightningModule):
         x, y = batch
         y_hat = self(x)
         l = self.loss(y_hat, y)
-        tensorboard_logs = {"train_loss": l, "train_mse": self.squared_loss(y_hat, y)}
+        tensorboard_logs = {"train_loss": l, "train_mse": self.mse(y_hat, y)}
         dic = {"loss": l, "log": tensorboard_logs}
         self.log_dict(tensorboard_logs, on_epoch=True)
 
         return dic
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
         return optimizer
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         l = self.loss(y_hat, y)
-        dic = {"val_loss": l, "val_mse": self.squared_loss(y_hat, y)}
+        dic = {"val_loss": l, "val_mse": self.mse(y_hat, y)}
         return dic
 
     def validation_epoch_end(self, outputs):
@@ -57,7 +57,7 @@ class BasicModel(LightningModule):
         y_hat = self(x)
         dic = {
             "test_loss": self.loss(y_hat, y),
-            "test_mse": self.squared_loss(y_hat, y),
+            "test_mse": self.mse(y_hat, y),
         }
         return dic
 

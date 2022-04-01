@@ -1,5 +1,6 @@
 from data_loaders import (
-    get_shift_dataloaders,
+    get_shift_one_dim_dataloaders,
+    get_shift_high_dim_dataloaders,
 )
 
 
@@ -19,9 +20,9 @@ def get_bound_function(gamma):
     return f
 
 
-def get_dataset(dataset, p_train, p_test_lo, p_test_hi, n_test_sweep, seed):
+def get_dataset(dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep, seed):
 
-    if dataset == "shifted":
+    if dataset == "shifted_one_dim":
         (
             train,
             val,
@@ -31,27 +32,36 @@ def get_dataset(dataset, p_train, p_test_lo, p_test_hi, n_test_sweep, seed):
             X_std,
             y_mean,
             y_std,
-        ), p_tests = get_shift_dataloaders(
+        ), p_tests = get_shift_one_dim_dataloaders(
             dataset,
+            n_train=n_train,
             p_train=p_train,
             p_test_lo=p_test_lo,
             p_test_hi=p_test_hi,
             n_test_sweep=n_test_sweep,
             seed=seed,
         )
-    #    elif dataset == "shifted_oracle":
-    # oracle dataset has p_test = p_train
-    #        (
-    #            train,
-    #          val,
-    #         test,
-    #         input_size,
-    #         X_mean,
-    #          X_std,
-    #          y_mean,
-    #          y_std,
-    #      ) = get_shift_oracle_dataloaders(
-    #          dataset, p_train=p_test, p_test=p_test, seed=seed
-    #      )
+
+    elif dataset == "shifted_high_dim":
+        (
+            train,
+            val,
+            test,
+            input_size,
+            X_mean,
+            X_std,
+            y_mean,
+            y_std,
+        ), p_tests = get_shift_high_dim_dataloaders(
+            dataset,
+            n_train=n_train,
+            d=d,
+            p_train=p_train,
+            p_test_lo=p_test_lo,
+            p_test_hi=p_test_hi,
+            n_test_sweep=n_test_sweep,
+            seed=seed,
+        )
+
 
     return train, val, test, input_size, X_mean, X_std, y_mean, y_std, p_tests

@@ -3,6 +3,7 @@ from modules import BasicModel, RockafellarUryasevModel
 
 from loss import RockafellarUryasevLoss, GenericLoss
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import numpy as np
 import os
 import argh
@@ -12,9 +13,11 @@ from utils import get_bound_function, get_dataset
 
 def objective(
     dataset,
+    d,
     p_train,
     p_test_lo,
     p_test_hi,
+    n_train,
     n_test_sweep,
     method,
     loss,
@@ -23,14 +26,14 @@ def objective(
     epochs,
 ):
     train, val, tests, input_size, X_mean, X_std, y_mean, y_std, p_tests = get_dataset(
-        dataset, p_train, p_test_lo, p_test_hi, n_test_sweep, seed
+        dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep, seed
     )
-    #    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
-    #        ),
-    #        monitor="val_loss",
-    #        save_top_k=1,
-    #        mode="min",
-    #    )
+
+    checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
+            monitor="val_loss",
+            save_top_k=1,
+            mode="min",
+        )
 
     if method == "ru_regression":
         module = RockafellarUryasevModel
@@ -66,27 +69,28 @@ def objective(
     model = module(input_size=input_size, loss=loss_fn, y_mean=y_mean, y_scale=y_std)
     trainer = Trainer(
         gpus=1,
-        #       checkpoint_callback=checkpoint_callback,
+        checkpoint_callback=checkpoint_callback,
         max_epochs=epochs,
         logger=logger,
-        val_check_interval=0.25,
+        val_check_interval=0.1,
         log_every_n_steps=1,
     )
     trainer.fit(model, train_dataloader=train, val_dataloaders=val)
     res = []
     for i, test_loader in enumerate(tests):
-        all_res = trainer.test(test_dataloaders=test_loader)
+        all_res = trainer.test(test_dataloaders=test_loader, ckpt_path='best')
         all_res[0]["p_test"] = p_tests[i]
         res.append(all_res[0])
-    trainer.save_checkpoint(save_path)
     return res
 
 
 # Dataset
 @argh.arg("--dataset", default="simulated")
+@argh.arg("--d", default=2)
 @argh.arg("--p_train", default=0.2)
 @argh.arg("--p_test_lo", default=0.1)
 @argh.arg("--p_test_hi", default=0.8)
+@argh.arg("--n_train", default=7000)
 @argh.arg("--n_test_sweep", default=5)
 # @argh.arg("--batch_size", default=128)
 @argh.arg("--seed", default=0)
@@ -101,9 +105,11 @@ def objective(
 @argh.arg("--epochs", default=40)
 def main(
     dataset="simulated",
+    d=2,
     p_train=0.2,
     p_test_lo=0.1,
     p_test_hi=0.8,
+    n_train=7000,
     n_test_sweep=5,
     seed=0,
     save="baseline_experiments",
@@ -115,9 +121,11 @@ def main(
 ):
     res = objective(
         dataset=dataset,
+        d=d,
         p_train=p_train,
         p_test_lo=p_test_lo,
         p_test_hi=p_test_hi,
+        n_train=n_train,
         n_test_sweep=n_test_sweep,
         seed=seed,
         method=method,
@@ -129,7 +137,9 @@ def main(
     report_results(
         results=res,
         dataset=dataset,
+        n_train=n_train,
         p_train=p_train,
+        d=d,
         method=method,
         loss=loss,
         gamma=gamma,

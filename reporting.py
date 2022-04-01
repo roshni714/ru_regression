@@ -34,7 +34,7 @@ def report_regression(
 
 
 def report_results(
-    results, dataset, p_train, method, loss, gamma, seed, save, save_dir="results"
+    results, dataset, n_train, d, p_train, method, loss, gamma, seed, save, save_dir="results"
 ):
     if method != "ru_regression":
         gamma = 1
@@ -43,6 +43,8 @@ def report_results(
     for i in range(len(results)):
         full_result = {
             "dataset": dataset,
+            "n_train": n_train,
+            "d": d,
             "p_train": p_train,
             "method": method,
             "gamma": gamma,
