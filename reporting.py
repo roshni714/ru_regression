@@ -34,7 +34,17 @@ def report_regression(
 
 
 def report_results(
-    results, dataset, n_train, d, p_train, method, loss, gamma, seed, save, save_dir="results"
+    results,
+    dataset,
+    n_train,
+    d,
+    p_train,
+    method,
+    loss,
+    gamma,
+    seed,
+    save,
+    save_dir="results",
 ):
     if method != "ru_regression":
         gamma = 1

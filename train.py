@@ -30,10 +30,10 @@ def objective(
     )
 
     checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
-            monitor="val_loss",
-            save_top_k=1,
-            mode="min",
-        )
+        monitor="val_loss",
+        save_top_k=1,
+        mode="min",
+    )
 
     if method == "ru_regression":
         module = RockafellarUryasevModel
@@ -78,7 +78,7 @@ def objective(
     trainer.fit(model, train_dataloader=train, val_dataloaders=val)
     res = []
     for i, test_loader in enumerate(tests):
-        all_res = trainer.test(test_dataloaders=test_loader, ckpt_path='best')
+        all_res = trainer.test(test_dataloaders=test_loader, ckpt_path="best")
         all_res[0]["p_test"] = p_tests[i]
         res.append(all_res[0])
     return res

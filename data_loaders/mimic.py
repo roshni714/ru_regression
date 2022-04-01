@@ -55,7 +55,9 @@ def _load_mimic_los():
 
 
 def get_mimic_datasets(
-    name, split_seed=0, test_fraction=0.10,
+    name,
+    split_seed=0,
+    test_fraction=0.10,
 ):
     r"""
     Returns a MIMIC regression dataset in the form of numpy arrays.
@@ -89,14 +91,13 @@ def get_mimic_datasets(
         rs = np.random.RandomState(split_seed)
         permutation = rs.permutation(X.shape[0])
 
-
     n_train = int(0.7 * len(X))
     n_val = int(0.2 * len(X))
     n_test = int(0.1 * len(X))
 
     index_train = permutation[0:n_train]
-    index_val = permutation[n_train:n_train+n_val]
-    index_test = permutation[n_train+ n_val:]
+    index_val = permutation[n_train : n_train + n_val]
+    index_test = permutation[n_train + n_val :]
 
     X_train = X[index_train, :]
     X_test = X[index_test, :]
@@ -183,6 +184,6 @@ def get_mimic_dataloaders(
     )
     return train_loader, val_loader, test_loader, in_size, target_size, y_train_scale
 
+
 if __name__ == "__main__":
     print(_load_mimic_los()[0].shape)
-
