@@ -1,6 +1,7 @@
 from data_loaders import (
     get_shift_one_dim_dataloaders,
     get_shift_high_dim_dataloaders,
+    get_mimic_dataloaders,
 )
 
 
@@ -56,6 +57,26 @@ def get_dataset(dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep
             dataset,
             n_train=n_train,
             d=d,
+            p_train=p_train,
+            p_test_lo=p_test_lo,
+            p_test_hi=p_test_hi,
+            n_test_sweep=n_test_sweep,
+            seed=seed,
+        )
+
+    elif dataset == "mimic":
+        (
+            train,
+            val,
+            test,
+            input_size,
+            X_mean,
+            X_std,
+            y_mean,
+            y_std,
+        ), p_tests = get_mimic_dataloaders(
+            dataset,
+            n_train=n_train,
             p_train=p_train,
             p_test_lo=p_test_lo,
             p_test_hi=p_test_hi,

@@ -1,7 +1,6 @@
 import pandas as pd
-from data_loaders.utils import get_dataloaders
+from dataloader_utils import get_dataloaders
 import numpy as np
-from torch.utils.data import random_split, DataLoader, TensorDataset
 import torch
 import os
 
@@ -27,9 +26,8 @@ def _load_mimic_los():
         "bp_systolic": 118.0,
         "temp_fahren": 97.88,
         "weight_lbs": 81.0,
-        "ph": 7.4,
     }
-
+    total_df = total_df[total_df["age_on_adm"] < 300]
     total_df = total_df.fillna(impute_vals)
 
     features = [
@@ -49,140 +47,77 @@ def _load_mimic_los():
         "resp_rate",
         "temp_fahren",
         "weight_lbs",
-        "ph",
+        "age_on_adm",
     ]
     return total_df[features].to_numpy(), total_df["los"].to_numpy()
 
 
-def get_mimic_datasets(
-    name,
-    split_seed=0,
-    test_fraction=0.10,
-):
-    r"""
-    Returns a MIMIC regression dataset in the form of numpy arrays.
+def sample_dataset(D, X, y, median_age, n, p, seed):
+    rng = np.random.RandomState(seed)
 
-    Arguments:
-        name (str): name of the dataset
-        split_seed (int): seed used to generate train/test split
-        test_fraction (float): fraction of the dataset used for the test set
+    D_0 = D.index[D["age_on_adm" <= median_age]].tolist()
+    D_1 = D.index[D["age_on_adm" > median_age]].tolist()
 
+    us = rng.binomial(n=1, p=p_train, size=n_train).reshape(n, 1, 1)
+    n_0 = np.sum(us == 1)
+    n_1 = np.sum(us == 0)
 
-    Returns:
-        X_train (numpy.ndarray): training features
-        y_train (numpy.ndaray): training label
-        X_test (numpy.ndarray): test features
-        y_test (numpy.ndarray): test labels
-        y_train_scale (float): standard deviation of training labels
-    """
-    # load full dataset
-    load_funs = {"mimic_los": _load_mimic_los}
+    l_idx_0 = rng.choice(n_0, replace=False)
+    l_idx_1 = rng.choice(n_1, replace=False)
+    idx_0 = D_0[l_idx_0]
+    idx_1 = D_1[l_idx_1]
 
-    print("Loading dataset {}....".format(name))
+    X_0 = X[idx_0, :]
+    X_1 = X[idx_1, :]
+    y_0 = y[idx_0, None]
+    y_1 = y[idx_1, None]
 
-    X, y = load_funs[name]()
-    X = X.astype(np.float32)
-    y = y.astype(np.float32)
-    # We create the train and test sets with 90% and 10% of the data
+    X_sampled = pd.concat([X_0, X_1], ignore_index=True)
+    y_sampled = pd.concat([y_0, y_1], ignore_index=True)
 
-    if split_seed == -1:  # Do not shuffle!
-        permutation = range(X.shape[0])
-    else:
-        rs = np.random.RandomState(split_seed)
-        permutation = rs.permutation(X.shape[0])
-
-    n_train = int(0.7 * len(X))
-    n_val = int(0.2 * len(X))
-    n_test = int(0.1 * len(X))
-
-    index_train = permutation[0:n_train]
-    index_val = permutation[n_train : n_train + n_val]
-    index_test = permutation[n_train + n_val :]
-
-    X_train = X[index_train, :]
-    X_test = X[index_test, :]
-    X_val = X[index_val, :]
-    y_train = y[index_train, None]
-    y_test = y[index_test, None]
-    y_val = y[index_val, None]
-
-    print("Done loading dataset {}".format(name))
-
-    def standardize(data):
-        mu = data.mean(axis=0, keepdims=1)
-        scale = data.std(axis=0, keepdims=1)
-        scale[scale < 1e-10] = 1.0
-
-        data = (data - mu) / scale
-        return data, mu, scale
-
-    # Standardize
-    X_train, x_train_mu, x_train_scale = standardize(X_train)
-    X_test = (X_test - x_train_mu) / x_train_scale
-    y_train, y_train_mu, y_train_scale = standardize(y_train)
-    y_test = (y_test - y_train_mu) / y_train_scale
-    X_val = (X_val - x_train_mu) / x_train_scale
-    y_val = (y_val - y_train_mu) / y_train_scale
-
-    train = TensorDataset(
-        torch.Tensor(X_train),
-        torch.Tensor(y_train),
-    )
-
-    val = TensorDataset(
-        torch.Tensor(X_val).type(torch.float64),
-        torch.Tensor(y_val).type(torch.float64),
-    )
-
-    test = TensorDataset(
-        torch.Tensor(X_test).type(torch.float64),
-        torch.Tensor(y_test).type(torch.float64),
-    )
-
-    in_size = X_train[0].shape
-
-    return train, val, test, in_size, y_train_scale
+    return X_sampled, y_sampled
 
 
 def get_mimic_dataloaders(
-    name,
-    split_seed=0,
-    test_fraction=0.1,
-    batch_size=None,
-    train_frac=1.0,
-    combine_val_train=False,
+    n_train, d, seed, p_train, p_test_lo, p_test_hi, n_test_sweep
 ):
-    r"""
-    Returns a MIMIC regression dataset in the form of Pytorch dataloaders
-    for train, validation, and test. Also returns the sizes of features and label
-    and the standard deviation of the training labels.
+    X, y = _load_mimic_los()
+    age_col = X["age_on_adm"]
+    median_age = X["age_on_adm"].median()
 
-    Arguments:
-        name (str): name of the dataset
-        split_seed (int): seed used to generate train/test split
-        test_fraction (float): fraction of the dataset used for the test set
+    rng = np.random.RandomState(seed)
+    permutation = rng.permutation(X.shape[0])
+    index_test = permutation[: int(2 * X.shape[0] / 3)]
+    index_train = permuation[int(2 * X.shape[0] / 3) :]
 
-    Returns:
-        train_loader (Pytorch dataloader): training data.
-        val_loader (Pytorch dataloader): validation data.
-        test_loader (Pytorch dataloader): test data.
-        in_size (tuple): feature shape
-        target_size (tuple): target shape
-        y_train_scale (float): standard deviation of training labels.
+    D_test = X[index_test, :]
+    D_train = X[index_train, :]
 
-    """
-    train, val, test, in_size, target_size, y_train_scale = get_mimic_datasets(
-        name,
-        split_seed=split_seed,
-        test_fraction=test_fraction,
-        train_frac=train_frac,
-        combine_val_train=combine_val_train,
+    X_train, y_train = sample_dataset(D_train, X, y, median_age, n, p_train, seed=seed)
+    X_train_new = X_train[index_train, :]
+    X_val = X_train[index_val, :]
+    y_train_new = y_train[index_train, None]
+    y_val = y_train[index_val, None]
+
+    if n_test_sweep == 5:
+        p_tests = [0.1, 0.2, 0.5, 0.7, 0.9]
+    if n_test_sweep == 1:
+        p_tests = [p_test_lo]
+    X_tests = []
+    y_tests = []
+    for p_test in p_tests:
+        X_test, y_test = sample_dataset(D_test, X, y, median_age, n, p_test, seed=seed)
+        X_tests.append(X_test)
+        y_tests.append(y_test)
+
+    permutation = rng.permutation(X_train.shape[0])
+    index_train = permutation[: int(3 * X.shape[0] / 4)]
+    index_val = permutation[int(3 * X.shape[0] / 4) :]
+
+    return (
+        get_dataloaders(X_train_new, y_train_new, X_val, y_val, X_tests, y_tests, seed),
+        p_tests,
     )
-
-    train_loader, val_loader, test_loader = get_dataloaders(
-        train, val, test, batch_size
-    )
-    return train_loader, val_loader, test_loader, in_size, target_size, y_train_scale
 
 
 if __name__ == "__main__":
