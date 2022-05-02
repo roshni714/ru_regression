@@ -9,6 +9,9 @@ import os
 import argh
 from reporting import report_results
 from utils import get_bound_function, get_dataset
+import torch
+
+torch.manual_seed(0)
 
 
 def objective(
@@ -17,6 +20,7 @@ def objective(
     p_train,
     p_test_lo,
     p_test_hi,
+    unobserved,
     n_train,
     n_test_sweep,
     method,
@@ -25,8 +29,27 @@ def objective(
     seed,
     epochs,
 ):
-    train, val, tests, input_size, X_mean, X_std, y_mean, y_std, p_tests = get_dataset(
-        dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep, seed
+    (
+        train,
+        val,
+        tests,
+        input_size,
+        X_mean,
+        X_std,
+        y_mean,
+        y_std,
+        p_tests,
+        test_weights,
+    ) = get_dataset(
+        dataset,
+        n_train,
+        d,
+        unobserved,
+        p_train,
+        p_test_lo,
+        p_test_hi,
+        n_test_sweep,
+        seed,
     )
 
     checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
@@ -76,11 +99,22 @@ def objective(
         log_every_n_steps=1,
     )
     trainer.fit(model, train_dataloader=train, val_dataloaders=val)
+    trainer.save_checkpoint(save_path)
     res = []
-    for i, test_loader in enumerate(tests):
-        all_res = trainer.test(test_dataloaders=test_loader, ckpt_path="best")
-        all_res[0]["p_test"] = p_tests[i]
-        res.append(all_res[0])
+    trainer
+
+    if dataset == "mimic":
+        for i, p_test in enumerate(p_tests):
+            model.sample_weights = test_weights[i]
+            all_res = trainer.test(test_dataloaders=tests[0], ckpt_path="best")
+            all_res[0]["p_test"] = p_test
+            all_res[0]["unobserved"] = unobserved
+            res.append(all_res[0])
+    else:
+        for i, test_loader in enumerate(tests):
+            all_res = trainer.test(test_dataloaders=test_loader, ckpt_path="best")
+            all_res[0]["p_test"] = p_tests[i]
+            res.append(all_res[0])
     return res
 
 
@@ -92,6 +126,7 @@ def objective(
 @argh.arg("--p_test_hi", default=0.8)
 @argh.arg("--n_train", default=7000)
 @argh.arg("--n_test_sweep", default=5)
+@argh.arg("--unobserved", default=None)
 # @argh.arg("--batch_size", default=128)
 @argh.arg("--seed", default=0)
 # Save
@@ -104,11 +139,12 @@ def objective(
 # Epochs
 @argh.arg("--epochs", default=40)
 def main(
-    dataset="simulated",
+    dataset="shifted_one_dim",
     d=2,
     p_train=0.2,
     p_test_lo=0.1,
     p_test_hi=0.8,
+    unobserved=None,
     n_train=7000,
     n_test_sweep=5,
     seed=0,
@@ -125,6 +161,7 @@ def main(
         p_train=p_train,
         p_test_lo=p_test_lo,
         p_test_hi=p_test_hi,
+        unobserved=unobserved,
         n_train=n_train,
         n_test_sweep=n_test_sweep,
         seed=seed,

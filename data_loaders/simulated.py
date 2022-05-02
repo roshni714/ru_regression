@@ -1,14 +1,6 @@
 import torch
 import numpy as np
-from dataloader_utils import get_dataloaders
-
-
-def standardize(data):
-    mu = data.mean(axis=0, keepdims=1)
-    scale = data.std(axis=0, keepdims=1)
-    # scale[scale < 1e-10] = 1.0
-    data = (data - mu) / scale
-    return data, mu, scale
+from data_loaders.dataloader_utils import get_dataloaders
 
 
 def generate_shift_one_dim_dataset(n, p, seed):
@@ -24,11 +16,16 @@ def generate_shift_one_dim_dataset(n, p, seed):
 def get_shift_one_dim_dataloaders(
     dataset, n_train, seed, p_train, p_test_lo, p_test_hi, n_test_sweep
 ):
-    X_val, y_val = generate_shift_one_dim_dataset(n=2000, p=p_train, seed=seed)
+    X_val, y_val = generate_shift_one_dim_dataset(
+        n=int(n_train * 0.2), p=p_train, seed=seed
+    )
 
-    p_tests = np.linspace(p_test_lo, p_test_hi, n_test_sweep)
     if n_test_sweep == 1:
         p_tests = [p_test_lo]
+    elif n_test_sweep == 5:
+        p_tests = [0.1, 0.2, 0.5, 0.7, 0.9]
+    else:
+        p_tests = np.linspace(p_test_lo, p_test_hi, n_test_sweep)
     X_tests = []
     y_tests = []
     for p_test in p_tests:

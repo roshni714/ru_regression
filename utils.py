@@ -21,7 +21,9 @@ def get_bound_function(gamma):
     return f
 
 
-def get_dataset(dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep, seed):
+def get_dataset(
+    dataset, n_train, d, unobserved, p_train, p_test_lo, p_test_hi, n_test_sweep, seed
+):
 
     if dataset == "shifted_one_dim":
         (
@@ -42,6 +44,7 @@ def get_dataset(dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep
             n_test_sweep=n_test_sweep,
             seed=seed,
         )
+        return train, val, test, input_size, X_mean, X_std, y_mean, y_std, p_tests, None
 
     elif dataset == "shifted_high_dim":
         (
@@ -63,9 +66,31 @@ def get_dataset(dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep
             n_test_sweep=n_test_sweep,
             seed=seed,
         )
-
+        return train, val, test, input_size, X_mean, X_std, y_mean, y_std, p_tests, None
     elif dataset == "mimic":
         (
+            (
+                train,
+                val,
+                test,
+                input_size,
+                X_mean,
+                X_std,
+                y_mean,
+                y_std,
+            ),
+            p_tests,
+            test_weights,
+        ) = get_mimic_dataloaders(
+            unobserved=unobserved,
+            n_train=n_train,
+            p_train=p_train,
+            p_test_lo=p_test_lo,
+            p_test_hi=p_test_hi,
+            n_test_sweep=n_test_sweep,
+            seed=seed,
+        )
+        return (
             train,
             val,
             test,
@@ -74,14 +99,6 @@ def get_dataset(dataset, n_train, d, p_train, p_test_lo, p_test_hi, n_test_sweep
             X_std,
             y_mean,
             y_std,
-        ), p_tests = get_mimic_dataloaders(
-            dataset,
-            n_train=n_train,
-            p_train=p_train,
-            p_test_lo=p_test_lo,
-            p_test_hi=p_test_hi,
-            n_test_sweep=n_test_sweep,
-            seed=seed,
+            p_tests,
+            test_weights,
         )
-
-    return train, val, test, input_size, X_mean, X_std, y_mean, y_std, p_tests

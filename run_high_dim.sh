@@ -1,5 +1,3 @@
-#!/bin/bash
-
 P_TRAIN=0.2
 P_TEST_LO=0.1
 P_TEST_HI=0.8

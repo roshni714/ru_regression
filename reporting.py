@@ -48,6 +48,8 @@ def report_results(
 ):
     if method != "ru_regression":
         gamma = 1
+    if dataset == "mimic":
+        d = None
     results_file = save_dir + "/" + save + ".csv"
 
     for i in range(len(results)):

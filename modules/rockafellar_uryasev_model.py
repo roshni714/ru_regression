@@ -2,6 +2,8 @@ import torch
 import pdb
 from pytorch_lightning.core.lightning import LightningModule
 from loss import GenericLoss
+import math
+import numpy as np
 
 
 class RockafellarUryasevModel(LightningModule):
@@ -22,6 +24,7 @@ class RockafellarUryasevModel(LightningModule):
             torch.nn.Linear(64, 1),
         )
         self.loss = loss
+        self.sample_weights = None
         self.squared_loss = GenericLoss("squared_loss", y_mean=y_mean, y_scale=y_scale)
 
     def forward(self, x):
@@ -32,8 +35,11 @@ class RockafellarUryasevModel(LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         h_out, alpha_out = self(x)
-        l = self.loss(x, y, h_out, alpha_out)
-        tensorboard_logs = {"train_loss": l, "train_mse": self.squared_loss(h_out, y)}
+        l = self.loss(x, y, h_out, alpha_out).mean()
+        tensorboard_logs = {
+            "train_loss": l,
+            "train_mse": self.squared_loss(h_out, y).mean(),
+        }
 
         self.log_dict(tensorboard_logs, on_epoch=True)
         return {"loss": l, "log": tensorboard_logs}
@@ -45,8 +51,8 @@ class RockafellarUryasevModel(LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         h_out, alpha_out = self(x)
-        l = self.loss(x, y, h_out, alpha_out)
-        dic = {"val_loss": l, "val_mse": self.squared_loss(h_out, y)}
+        l = self.loss(x, y, h_out, alpha_out).mean()
+        dic = {"val_loss": l, "val_mse": self.squared_loss(h_out, y).mean()}
         return dic
 
     def validation_epoch_end(self, outputs):
@@ -62,10 +68,34 @@ class RockafellarUryasevModel(LightningModule):
     def test_step(self, batch, batch_idx):
         x, y = batch
         h_out, alpha_out = self(x)
-        dic = {
-            "test_loss": self.loss(x, y, h_out, alpha_out),
-            "test_mse": self.squared_loss(h_out, y),
-        }
+
+        mse_loss = self.squared_loss(h_out, y, self.sample_weights)
+
+        if self.sample_weights is not None:
+            rng = np.random.RandomState(0)
+            mse_loss_np = mse_loss.detach().cpu().numpy().flatten()
+            sums = torch.zeros(5000)
+            for i in range(5000):
+                bootstrap_sample = rng.choice(mse_loss_np, size=mse_loss.shape[0])
+                sums[i] = bootstrap_sample.sum().item()
+            #        import pdb
+            #        pdb.set_trace()
+            #        import pdb
+            #        pdb.set_trace()
+            dic = {
+                "test_loss": self.loss(
+                    x, y, h_out, alpha_out, self.sample_weights
+                ).mean(),
+                "test_mse": mse_loss.sum(),
+                "test_se": sums.std(),
+            }
+        else:
+            dic = {
+                "test_loss": self.loss(
+                    x, y, h_out, alpha_out, self.sample_weights
+                ).mean(),
+                "test_mse": mse_loss.mean(),
+            }
         return dic
 
     def test_epoch_end(self, outputs):

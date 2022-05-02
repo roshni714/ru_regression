@@ -2,6 +2,8 @@ import torch
 import pdb
 from pytorch_lightning.core.lightning import LightningModule
 from loss import GenericLoss
+import math
+import numpy as np
 
 
 class BasicModel(LightningModule):
@@ -16,6 +18,7 @@ class BasicModel(LightningModule):
         )
         self.loss = loss
         self.mse = GenericLoss("squared_loss", y_mean, y_scale)
+        self.sample_weights = None
 
     def forward(self, x):
         y_hat = self.net(x)
@@ -24,8 +27,8 @@ class BasicModel(LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        l = self.loss(y_hat, y)
-        tensorboard_logs = {"train_loss": l, "train_mse": self.mse(y_hat, y)}
+        l = self.loss(y_hat, y).mean()
+        tensorboard_logs = {"train_loss": l, "train_mse": self.mse(y_hat, y).mean()}
         dic = {"loss": l, "log": tensorboard_logs}
         self.log_dict(tensorboard_logs, on_epoch=True)
 
@@ -38,8 +41,10 @@ class BasicModel(LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        l = self.loss(y_hat, y)
-        dic = {"val_loss": l, "val_mse": self.mse(y_hat, y)}
+        # import pdb
+        # pdb.set_trace()
+        l = self.loss(y_hat, y).mean()
+        dic = {"val_loss": l, "val_mse": self.mse(y_hat, y).mean()}
         return dic
 
     def validation_epoch_end(self, outputs):
@@ -55,10 +60,29 @@ class BasicModel(LightningModule):
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        dic = {
-            "test_loss": self.loss(y_hat, y),
-            "test_mse": self.mse(y_hat, y),
-        }
+        mse_loss = self.mse(y_hat, y, self.sample_weights)
+
+        if self.sample_weights is not None:
+            rng = np.random.RandomState(0)
+            mse_loss_np = mse_loss.detach().cpu().numpy().flatten()
+            sums = torch.zeros(5000)
+            for i in range(5000):
+                bootstrap_sample = rng.choice(mse_loss_np, size=mse_loss.shape[0])
+                sums[i] = bootstrap_sample.sum().item()
+            #        import pdb
+            #        pdb.set_trace()
+            #        import pdb
+            #        pdb.set_trace()
+            dic = {
+                "test_loss": self.loss(y_hat, y, self.sample_weights).mean(),
+                "test_mse": mse_loss.sum(),
+                "test_se": sums.std(),
+            }
+        else:
+            dic = {
+                "test_loss": self.loss(y_hat, y, self.sample_weights).mean(),
+                "test_mse": mse_loss.mean(),
+            }
         return dic
 
     def test_epoch_end(self, outputs):

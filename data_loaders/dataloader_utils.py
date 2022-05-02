@@ -3,6 +3,14 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset, random_split, TensorDataset
 
 
+def standardize(data):
+    mu = data.mean(axis=0, keepdims=1)
+    scale = data.std(axis=0, keepdims=1)
+    # scale[scale < 1e-10] = 1.0
+    data = (data - mu) / scale
+    return data, mu, scale
+
+
 def get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests, seed):
     X_train, x_train_mu, x_train_scale = standardize(X_train)
     y_train, y_train_mu, y_train_scale = standardize(y_train)
