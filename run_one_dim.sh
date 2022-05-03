@@ -3,7 +3,7 @@ P_TRAIN=0.2
 P_TEST_LO=0.1
 P_TEST_HI=0.9
 p_tests=(0.1 0.5 0.7 0.9)
-seeds=(0)
+seeds=(0 1 2 3 4 5)
 gammas=(2 4 8 16)
 
 for SEED in "${seeds[@]}";

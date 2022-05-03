@@ -15,6 +15,7 @@ import numpy as np
 @argh.arg("--save", default="sim")
 
 # Loss
+@argh.arg("--p_train", default=0.2)
 @argh.arg("--method", default="ru_regression")
 @argh.arg("--loss", default="squared_loss")
 @argh.arg("--gamma", default=2.0)
@@ -24,10 +25,12 @@ def main(
     save="inference_results",
     method="ru_regression",
     loss="squared_loss",
+    p_train=0.2,
     gamma=2.0,
     epochs=40,
     #    batch_size=128,
 ):
+    print("p_train", p_train)
     (
         train,
         val,
@@ -44,14 +47,13 @@ def main(
         n_train=10000,
         d=1,
         unobserved=None,
-        p_train=0.2,
+        p_train=p_train,
         p_test_lo=0.2,
         p_test_hi=0.2,
         n_test_sweep=1,
         seed=seed,
     )
 
-    p_train=0.2
     if method == "ru_regression":
         module = RockafellarUryasevModel
         loss_fn = RockafellarUryasevLoss(
@@ -87,6 +89,7 @@ def main(
         save=save,
         method=method,
         loss=loss,
+        p_train=p_train,
         gamma=gamma,
         X=X,
         y=y,
