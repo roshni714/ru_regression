@@ -58,6 +58,14 @@ def generate_shift_high_dim_dataset(n, d, p, seed):
     return xs.reshape(n, d), ys.reshape(n, 1), us, beta
 
 
+def sample_y_conditional_shift_one_dim(n, p, x, seed):
+    rng = np.random.RandomState(seed)
+    us = rng.binomial(n=1, p=p, size=n)
+    noise = rng.normal(0.0, 1.0, size=n)
+    ys = np.sqrt(x) + (np.sqrt(x) * 3 + 1) * us + noise
+    return ys
+
+
 def get_shift_high_dim_dataloaders(
     dataset, n_train, d, seed, p_train, p_test_lo, p_test_hi, n_test_sweep
 ):

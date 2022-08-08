@@ -13,19 +13,21 @@ def write_result(results_file, result):
 
 
 def report_regression(
-    dataset, method, loss, p_train, gamma, seed, save, X, y, save_dir="results"
+    dataset, method, loss, p_train, gamma, seed, save, X, y, alpha, save_dir="results"
 ):
     if method != "ru_regression":
         gamma = 1
     all_res = []
     for i in range(len(X)):
-        results = {"X": X[i].item(), "y": y[i].item()}
+        results = {"X": X[i].item(), "y": y[i].item(), "alpha": alpha[i].item()}
         all_res.append(results)
     results_file = (
         save_dir
         + "/"
         + save
-        + "_{}_{}_{}_{}_p_train_{}_seed_{}".format(dataset, method, gamma, loss, p_train,seed)
+        + "_{}_{}_{}_{}_p_train_{}_seed_{}".format(
+            dataset, method, gamma, loss, p_train, seed
+        )
         + ".csv"
     )
 

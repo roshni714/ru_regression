@@ -59,15 +59,19 @@ def main(
         loss_fn = RockafellarUryasevLoss(
             loss=loss, bound_function=get_bound_function(gamma)
         )
-        save_path = "/scratch/users/rsahoo/models/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
-            dataset, method, int(gamma), loss, p_train, seed
+        save_path = (
+            "/scratch/users/rsahoo/models/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+                dataset, method, int(gamma), loss, p_train, seed
+            )
         )
 
     elif method == "erm":
         module = BasicModel
         loss_fn = GenericLoss(loss=loss)
-        save_path = "/scratch/users/rsahoo/models/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
-            dataset, method, loss, p_train, seed
+        save_path = (
+            "/scratch/users/rsahoo/models/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+                dataset, method, loss, p_train, seed
+            )
         )
 
     model = module.load_from_checkpoint(
@@ -78,11 +82,13 @@ def main(
     r_X = (X - X_mean) / X_std
     r_X = torch.Tensor(r_X.reshape(-1, 1))
     if method == "ru_regression":
-        r_y, _ = model(r_X)
+        r_y, alpha = model(r_X)
         r_y = r_y.detach().numpy()
     else:
         r_y = model(r_X).detach().numpy()
+        alpha = np.zeros(r_y.shape)
     y = r_y * y_std + y_mean
+    alpha *= y_std**2
     report_regression(
         dataset=dataset,
         seed=seed,
@@ -93,6 +99,7 @@ def main(
         gamma=gamma,
         X=X,
         y=y,
+        alpha=alpha,
     )
 
 

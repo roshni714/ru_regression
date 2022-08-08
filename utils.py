@@ -83,7 +83,6 @@ def get_dataset(
             test_weights,
         ) = get_mimic_dataloaders(
             unobserved=unobserved,
-            n_train=n_train,
             p_train=p_train,
             p_test_lo=p_test_lo,
             p_test_hi=p_test_hi,

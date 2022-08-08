@@ -5,6 +5,8 @@ from loss import GenericLoss
 import math
 import numpy as np
 
+torch.manual_seed(0)
+
 
 class BasicModel(LightningModule):
     def __init__(self, input_size, loss, y_mean, y_scale):
@@ -61,7 +63,6 @@ class BasicModel(LightningModule):
         x, y = batch
         y_hat = self(x)
         mse_loss = self.mse(y_hat, y, self.sample_weights)
-
         if self.sample_weights is not None:
             rng = np.random.RandomState(0)
             mse_loss_np = mse_loss.detach().cpu().numpy().flatten()

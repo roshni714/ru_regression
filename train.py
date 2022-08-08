@@ -98,6 +98,7 @@ def objective(
         val_check_interval=0.1,
         log_every_n_steps=1,
     )
+
     trainer.fit(model, train_dataloader=train, val_dataloaders=val)
     trainer.save_checkpoint(save_path)
     res = []

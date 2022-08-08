@@ -11,7 +11,9 @@ def standardize(data):
     return data, mu, scale
 
 
-def get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests, seed):
+def get_dataloaders(
+    X_train, y_train, X_val, y_val, X_tests, y_tests, seed, batchsize=None
+):
     X_train, x_train_mu, x_train_scale = standardize(X_train)
     y_train, y_train_mu, y_train_scale = standardize(y_train)
     for i in range(len(y_tests)):
@@ -42,9 +44,12 @@ def get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests, seed):
         test_loader = DataLoader(test, batch_size=len(test), shuffle=False)
         test_loaders.append(test_loader)
 
-    train_loader = DataLoader(
-        train, batch_size=int(X_train.shape[0] * 0.25), shuffle=True
-    )
+    if batchsize is not None:
+        train_loader = DataLoader(train, batch_size=batchsize, shuffle=True)
+    else:
+        train_loader = DataLoader(
+            train, batch_size=int(X_train.shape[0] * 0.25), shuffle=True
+        )
     val_loader = DataLoader(val, batch_size=len(val), shuffle=False)
     return (
         train_loader,

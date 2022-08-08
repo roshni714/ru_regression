@@ -5,6 +5,8 @@ from loss import GenericLoss
 import math
 import numpy as np
 
+torch.manual_seed(0)
+
 
 class RockafellarUryasevModel(LightningModule):
     def __init__(self, input_size, loss, y_mean, y_scale):

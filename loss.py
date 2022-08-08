@@ -31,7 +31,7 @@ class RockafellarUryasevLoss:
         if sample_weights is not None:
             assert ru_loss.shape == sample_weights.shape
             ru_loss *= sample_weights.to(ru_loss.get_device())
-
+            ru_loss /= sample_weights.sum().to(ru_loss.get_device())
         return ru_loss
 
 
@@ -55,6 +55,7 @@ class GenericLoss:
                 print("applying sample weights")
                 assert l.shape == sample_weights.shape
                 l *= sample_weights.to(l.get_device())
+                l /= sample_weights.sum().to(l.get_device())
 
             return l
         else:
@@ -65,4 +66,5 @@ class GenericLoss:
                 print("applying sample weights unrescaled")
                 assert l.shape == sample_weights.shape
                 l *= sample_weights.to(l.get_device())
+                l /= sample_weights.sum().to(l.get_device())
             return l
