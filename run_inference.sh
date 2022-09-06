@@ -1,5 +1,5 @@
 #!/bin/bash
-MODEL_PATH=`/scratch/users/rsahoo/models"
+MODEL_PATH='/scratch/users/rsahoo/models'
 seeds=(0)
 gammas=(2 4 8 16)
 for SEED in "${seeds[@]}";
