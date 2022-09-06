@@ -14,18 +14,18 @@ do
     # Oracle ERM
     for P_TEST in "${p_tests[@]}";
     do
-        python train.py main --n_train 100000 --dataset shifted_high_dim --d $D --p_test_lo $P_TEST --p_test_hi $P_TEST --p_train $P_TEST --n_test_sweep 1 --method erm --epochs 50 --loss squared_loss --seed $SEED --save sim_high_dim_2 --run_path $RUN_PATH --model_path $MODEL_PATH
+        python train.py main --n_train 100000 --dataset shifted_high_dim --d $D --p_test_lo $P_TEST --p_test_hi $P_TEST --p_train $P_TEST --n_test_sweep 1 --method erm --epochs 50 --loss squared_loss --seed $SEED --save sim_high_dim --run_path $RUN_PATH --model_path $MODEL_PATH
 
     done
      
     # Standard ERM
-    python train.py main --n_train 100000 --dataset shifted_high_dim --d $D --p_test_lo $P_TEST_LO --p_test_hi $P_TEST_HI --p_train $P_TRAIN --n_test_sweep 5 --method erm --epochs 50 --loss squared_loss --seed $SEED --save sim_high_dim_2 --run_path $RUN_PATH --model_path $MODEL_PATH
+    python train.py main --n_train 100000 --dataset shifted_high_dim --d $D --p_test_lo $P_TEST_LO --p_test_hi $P_TEST_HI --p_train $P_TRAIN --n_test_sweep 5 --method erm --epochs 50 --loss squared_loss --seed $SEED --save sim_high_dim --run_path $RUN_PATH --model_path $MODEL_PATH
 
 
     # RU Regression
     for GAMMA in "${gammas[@]}";
     do
-        python train.py main --n_train 100000 --dataset shifted_high_dim --d $D --p_test_lo $P_TEST_LO --p_test_hi $P_TEST_HI --p_train $P_TRAIN --n_test_sweep 5 --method ru_regression --epochs 50 --loss squared_loss --gamma $GAMMA --seed $SEED --save sim_high_dim_2 --run_path $RUN_PATH --model_path $MODEL_PATH
+        python train.py main --n_train 100000 --dataset shifted_high_dim --d $D --p_test_lo $P_TEST_LO --p_test_hi $P_TEST_HI --p_train $P_TRAIN --n_test_sweep 5 --method ru_regression --epochs 50 --loss squared_loss --gamma $GAMMA --seed $SEED --save sim_high_dim --run_path $RUN_PATH --model_path $MODEL_PATH
 
     done
 
