@@ -22,7 +22,7 @@ chmod +x run_one_dim.sh
 
 and run paper-figure-2.ipynb and paper-table-1.ipynb.
 
-To reproduce Figure 2, edit `MODEL_PATH` and `RUN_PATH` in `run_high_dim.sh`. Then, run the following commands.
+To reproduce Table 2, edit `MODEL_PATH` and `RUN_PATH` in `run_high_dim.sh`. Then, run the following commands.
 
 ```
 chmod +x run_high_dim.sh
