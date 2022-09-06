@@ -1,0 +1,17 @@
+name: ru_reg
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - torchvision
+  - cudatoolkit=11.3
+  - pytorch
+  - pytorch-lightning
+  - argh
+  - jupyter
+  - matplotlib==3.4.2
+  - black
+  - pandas
+  - xlrd
+  - scipy
+prefix: /home/users/rsahoo/miniconda3/envs/torch
