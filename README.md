@@ -8,6 +8,7 @@ To setup the environment for running the code, run
 ```
 conda env create -n ru_reg --file environment.yml
 conda activate ru_reg
+mkdir figs
 ```
 
 To reproduce Figure 1, run paper-figure-1.ipynb.
