@@ -3,8 +3,7 @@
 
 This repository contains the code for replicating the figures and simulations in Learning from a Biased Sample, including an implementation of Rockafellar-Uryasev (RU) Regression.
 
-To setup the environment for running the code, run
-
+To setup the environment for running the code, edit the ``prefix``field of the environment.yml file to point to the directory of your conda environments. Then, run
 ```
 conda env create -n ru_reg --file environment.yml
 conda activate ru_reg
