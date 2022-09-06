@@ -13,9 +13,10 @@ import torch
 
 torch.manual_seed(0)
 
-
 def objective(
     dataset,
+    run_path,
+    model_path,
     d,
     p_train,
     p_test_lo,
@@ -64,13 +65,13 @@ def objective(
             loss=loss, bound_function=get_bound_function(gamma)
         )
         logger = TensorBoardLogger(
-            save_dir="/scratch/users/rsahoo/runs",
+            save_dir=run_path,
             name="logs/{}_{}_{}_{}_p_train_{}_seed_{}".format(
                 dataset, method, gamma, loss, p_train, seed
             ),
         )
         save_path = (
-            "/scratch/users/rsahoo/models/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
                 dataset, method, int(gamma), loss, p_train, seed
             )
         )
@@ -78,13 +79,13 @@ def objective(
         module = BasicModel
         loss_fn = GenericLoss(loss=loss)
         logger = TensorBoardLogger(
-            save_dir="/scratch/users/rsahoo/runs",
+            save_dir=run_path,
             name="logs/{}_{}_{}_p_train_{}_seed_{}".format(
                 dataset, method, loss, p_train, seed
             ),
         )
         save_path = (
-            "/scratch/users/rsahoo/models/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            "{}/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
                 dataset, method, loss, p_train, seed
             )
         )
@@ -121,6 +122,8 @@ def objective(
 
 # Dataset
 @argh.arg("--dataset", default="simulated")
+@argh.arg("--model_path", default="/scratch/users/rsahoo/models")
+@argh.arg("--run_path", default="/scratch/users/rsahoo/runs") 
 @argh.arg("--d", default=2)
 @argh.arg("--p_train", default=0.2)
 @argh.arg("--p_test_lo", default=0.1)
@@ -141,6 +144,8 @@ def objective(
 @argh.arg("--epochs", default=40)
 def main(
     dataset="shifted_one_dim",
+    run_path="/scratch/users/rsahoo/runs",
+    model_path="/scratch/users/rsahoo/models",
     d=2,
     p_train=0.2,
     p_test_lo=0.1,
@@ -158,6 +163,8 @@ def main(
 ):
     res = objective(
         dataset=dataset,
+        run_path=run_path,
+        model_path=model_path,
         d=d,
         p_train=p_train,
         p_test_lo=p_test_lo,

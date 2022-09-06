@@ -13,8 +13,7 @@ mkdir results
 
 To reproduce Figure 1, run paper-figure-1.ipynb.
 
-To reproduce Figure 2 and Table 1, run the following commands
-
+To reproduce Figure 2 and Table 1, edit `MODEL_PATH` and `RUN_PATH` in `run_one_dim.sh` and `MODEL_PATH` in `run_inference.sh` to the directories where you would like to save the trained models and logs, respectively. Then, run the following commands
 ```
 chmod +x run_one_dim.sh
 ./run_one_dim.sh
@@ -23,7 +22,7 @@ chmod +x run_one_dim.sh
 
 and run paper-figure-2.ipynb and paper-table-1.ipynb.
 
-To reproduce Figure 2, run the following commands.
+To reproduce Figure 2, edit `MODEL_PATH` and `RUN_PATH` in `run_high_dim.sh`. Then, run the following commands.
 
 ```
 chmod +x run_high_dim.sh

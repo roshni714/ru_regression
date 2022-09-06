@@ -7,8 +7,10 @@ from utils import get_bound_function, get_dataset
 from loss import RockafellarUryasevLoss, GenericLoss
 import numpy as np
 
+
 # Dataset
 @argh.arg("--dataset", default="shifted_one_dim")
+@argh.arg("--model_path", default="/scratch/users/rsahoo/models")
 # @argh.arg("--batch_size", default=128)
 @argh.arg("--seed", default=0)
 # Save
@@ -21,6 +23,7 @@ import numpy as np
 @argh.arg("--gamma", default=2.0)
 def main(
     dataset="shifted_one_dim",
+    model_path="/scratch/users/rsahoo/models",
     seed=0,
     save="inference_results",
     method="ru_regression",
@@ -60,7 +63,7 @@ def main(
             loss=loss, bound_function=get_bound_function(gamma)
         )
         save_path = (
-            "/scratch/users/rsahoo/models/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
                 dataset, method, int(gamma), loss, p_train, seed
             )
         )
@@ -69,7 +72,7 @@ def main(
         module = BasicModel
         loss_fn = GenericLoss(loss=loss)
         save_path = (
-            "/scratch/users/rsahoo/models/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            "{}/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
                 dataset, method, loss, p_train, seed
             )
         )
