@@ -30,5 +30,14 @@ chmod +x run_high_dim.sh
 ```
 and run paper-table-2.ipynb.
 
+To cite our work:
+```
+@article{sahoo2022learning,
+  title={Learning from a Biased Sample},
+  author={Sahoo, Roshni and Lei, Lihua and Wager, Stefan},
+  journal={arXiv preprint arXiv:2209.01754},
+  year={2022}
+}
+```
 
 
