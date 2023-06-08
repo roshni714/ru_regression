@@ -1,6 +1,6 @@
 # Replication code for Learning from a Biased Sample
 
-**UPDATE:** We include a stand-alone [demo notebook](demo.ipynb) that can be run with minimal dependencies (Pytorch, numpy, matplotlib). Thanks to Alberto Arletti for contributing this!  
+**UPDATE:** We include a stand-alone [demo notebook](demo.ipynb) that can be run on CPU with minimal dependencies (Pytorch, numpy, matplotlib). Thanks to Alberto Arletti for contributing this!  
 
 This repository contains the code for replicating the figures and simulations in Learning from a Biased Sample, including an implementation of Rockafellar-Uryasev (RU) Regression.
 
