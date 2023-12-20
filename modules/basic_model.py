@@ -1,6 +1,6 @@
 import torch
 import pdb
-from pytorch_lightning.core.lightning import LightningModule
+from pytorch_lightning import LightningModule
 from loss import GenericLoss
 import math
 import numpy as np
@@ -21,6 +21,9 @@ class BasicModel(LightningModule):
         self.loss = loss
         self.mse = GenericLoss("squared_loss", y_mean, y_scale)
         self.sample_weights = None
+
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
 
     def forward(self, x):
         y_hat = self.net(x)
@@ -47,16 +50,18 @@ class BasicModel(LightningModule):
         # pdb.set_trace()
         l = self.loss(y_hat, y).mean()
         dic = {"val_loss": l, "val_mse": self.mse(y_hat, y).mean()}
+        self.validation_step_outputs.append(dic)
         return dic
 
-    def validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self):
+        outputs = self.validation_step_outputs
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         tensorboard_logs = {}
         for key in outputs[0]:
             cal = torch.stack([x[key] for x in outputs]).mean()
             tensorboard_logs[key] = cal
         self.log_dict(tensorboard_logs)
-
+        self.validation_step_outputs.clear()
         return {"val_loss": avg_loss, "log": tensorboard_logs}
 
     def test_step(self, batch, batch_idx):
@@ -84,15 +89,18 @@ class BasicModel(LightningModule):
                 "test_loss": self.loss(y_hat, y, self.sample_weights).mean(),
                 "test_mse": mse_loss.mean(),
             }
+        self.test_step_outputs.append(dic)
         return dic
 
-    def test_epoch_end(self, outputs):
+    def on_test_epoch_end(self):
+        outputs = self.test_step_outputs
         avg_loss = torch.stack([x["test_loss"] for x in outputs]).mean()
         tensorboard_logs = {}
         for key in outputs[0]:
             cal = torch.stack([x[key] for x in outputs]).mean()
             tensorboard_logs[key] = cal
         self.log_dict(tensorboard_logs)
+        self.test_step_outputs.clear()
         return {
             "test_loss": avg_loss,
             "log": tensorboard_logs,

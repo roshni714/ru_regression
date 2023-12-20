@@ -17,7 +17,7 @@ class RockafellarUryasevLoss:
 
     def __call__(self, x, y, h_out, alpha_out, sample_weights=None):
         assert y.shape == h_out.shape
-        assert y.shape == alpha_out.shape
+        assert y.shape == alpha_out.shape or alpha_out.shape[0] == 1
         bound_low = self.bound_function(x, low=True)
         bound_up = self.bound_function(x, up=True)
 

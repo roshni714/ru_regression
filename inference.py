@@ -62,19 +62,23 @@ def main(
         loss_fn = RockafellarUryasevLoss(
             loss=loss, bound_function=get_bound_function(gamma)
         )
-        save_path = (
-            "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
-                dataset, method, int(gamma), loss, p_train, seed
-            )
+        save_path = "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            model_path, dataset, method, int(gamma), loss, p_train, seed
+        )
+    elif method == "joint_ru_regression":
+        module = JointRockafellarUryasevModel
+        loss_fn = RockafellarUryasevLoss(
+            loss=loss, bound_function=get_bound_function(gamma)
+        )
+        save_path = "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            model_path, dataset, method, int(gamma), loss, p_train, seed
         )
 
     elif method == "erm":
         module = BasicModel
         loss_fn = GenericLoss(loss=loss)
-        save_path = (
-            "{}/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
-                dataset, method, loss, p_train, seed
-            )
+        save_path = "{}/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            model_path, dataset, method, loss, p_train, seed
         )
 
     model = module.load_from_checkpoint(

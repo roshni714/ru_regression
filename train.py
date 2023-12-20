@@ -1,5 +1,5 @@
 from pytorch_lightning import Trainer, callbacks
-from modules import BasicModel, RockafellarUryasevModel
+from modules import BasicModel, RockafellarUryasevModel, JointRockafellarUryasevModel
 
 from loss import RockafellarUryasevLoss, GenericLoss
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -12,6 +12,7 @@ from utils import get_bound_function, get_dataset
 import torch
 
 torch.manual_seed(0)
+
 
 def objective(
     dataset,
@@ -70,11 +71,24 @@ def objective(
                 dataset, method, gamma, loss, p_train, seed
             ),
         )
-        save_path = (
-            "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
-                dataset, method, int(gamma), loss, p_train, seed
-            )
+        save_path = "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            model_path, dataset, method, int(gamma), loss, p_train, seed
         )
+    elif method == "joint_ru_regression":
+        module = JointRockafellarUryasevModel
+        loss_fn = RockafellarUryasevLoss(
+            loss=loss, bound_function=get_bound_function(gamma)
+        )
+        logger = TensorBoardLogger(
+            save_dir=run_path,
+            name="logs/{}_{}_{}_{}_p_train_{}_seed_{}".format(
+                dataset, method, gamma, loss, p_train, seed
+            ),
+        )
+        save_path = "{}/{}_{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            model_path, dataset, method, int(gamma), loss, p_train, seed
+        )
+
     elif method == "erm":
         module = BasicModel
         loss_fn = GenericLoss(loss=loss)
@@ -84,23 +98,21 @@ def objective(
                 dataset, method, loss, p_train, seed
             ),
         )
-        save_path = (
-            "{}/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(model_path,
-                dataset, method, loss, p_train, seed
-            )
+        save_path = "{}/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
+            model_path, dataset, method, loss, p_train, seed
         )
 
     model = module(input_size=input_size, loss=loss_fn, y_mean=y_mean, y_scale=y_std)
     trainer = Trainer(
-        gpus=1,
-        checkpoint_callback=checkpoint_callback,
+        accelerator="gpu",
+        callbacks=[checkpoint_callback],
         max_epochs=epochs,
         logger=logger,
         val_check_interval=0.1,
         log_every_n_steps=1,
     )
 
-    trainer.fit(model, train_dataloader=train, val_dataloaders=val)
+    trainer.fit(model, train_dataloaders=train, val_dataloaders=val)
     trainer.save_checkpoint(save_path)
     res = []
     trainer
@@ -108,13 +120,13 @@ def objective(
     if dataset == "mimic":
         for i, p_test in enumerate(p_tests):
             model.sample_weights = test_weights[i]
-            all_res = trainer.test(test_dataloaders=tests[0], ckpt_path="best")
+            all_res = trainer.test(dataloaders=tests[0], ckpt_path="best")
             all_res[0]["p_test"] = p_test
             all_res[0]["unobserved"] = unobserved
             res.append(all_res[0])
     else:
         for i, test_loader in enumerate(tests):
-            all_res = trainer.test(test_dataloaders=test_loader, ckpt_path="best")
+            all_res = trainer.test(dataloaders=test_loader, ckpt_path="best")
             all_res[0]["p_test"] = p_tests[i]
             res.append(all_res[0])
     return res
@@ -123,7 +135,7 @@ def objective(
 # Dataset
 @argh.arg("--dataset", default="simulated")
 @argh.arg("--model_path", default="/scratch/users/rsahoo/models")
-@argh.arg("--run_path", default="/scratch/users/rsahoo/runs") 
+@argh.arg("--run_path", default="/scratch/users/rsahoo/runs")
 @argh.arg("--d", default=2)
 @argh.arg("--p_train", default=0.2)
 @argh.arg("--p_test_lo", default=0.1)
