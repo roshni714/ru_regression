@@ -15,7 +15,7 @@ def write_result(results_file, result):
 def report_regression(
     dataset, method, loss, p_train, gamma, seed, save, X, y, alpha, save_dir="results"
 ):
-    if method != "ru_regression":
+    if "ru_reg" not in method:
         gamma = 1
     all_res = []
     for i in range(len(X)):
@@ -44,26 +44,39 @@ def report_results(
     method,
     loss,
     gamma,
+    use_train_weights,
+    model_class,
     seed,
     save,
     save_dir="results",
 ):
-    if method != "ru_regression":
+    if "ru_reg" not in method:
         gamma = 1
-    if dataset == "mimic":
-        d = None
     results_file = save_dir + "/" + save + ".csv"
 
     for i in range(len(results)):
-        full_result = {
-            "dataset": dataset,
-            "n_train": n_train,
-            "d": d,
-            "p_train": p_train,
-            "method": method,
-            "gamma": gamma,
-            "loss": loss,
-            "seed": seed,
-        }
+        if dataset in ["survey", "mimic"]:
+            full_result = {
+                "dataset": dataset,
+                "method": method,
+                "gamma": gamma,
+                "loss": loss,
+                "use_train_weights": use_train_weights,
+                "model_class": model_class,
+                "seed": seed,
+            }
+        else:
+            full_result = {
+                "dataset": dataset,
+                "n_train": n_train,
+                "d": d,
+                "p_train": p_train,
+                "method": method,
+                "gamma": gamma,
+                "loss": loss,
+                "model_class": model_class,
+                "use_train_weights": use_train_weights,
+                "seed": seed,
+            }
         full_result.update(results[i])
         write_result(results_file, full_result)

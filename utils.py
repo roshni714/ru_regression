@@ -2,6 +2,7 @@ from data_loaders import (
     get_shift_one_dim_dataloaders,
     get_shift_high_dim_dataloaders,
     get_mimic_dataloaders,
+    get_survey_dataloaders,
 )
 
 
@@ -22,9 +23,17 @@ def get_bound_function(gamma):
 
 
 def get_dataset(
-    dataset, n_train, d, unobserved, p_train, p_test_lo, p_test_hi, n_test_sweep, seed
+    dataset,
+    n_train,
+    d,
+    unobserved,
+    p_train,
+    p_test_lo,
+    p_test_hi,
+    n_test_sweep,
+    use_train_weights,
+    seed,
 ):
-
     if dataset == "shifted_one_dim":
         (
             train,
@@ -101,3 +110,17 @@ def get_dataset(
             p_tests,
             test_weights,
         )
+    elif dataset == "survey":
+        (
+            train,
+            val,
+            test,
+            X_mean,
+            X_std,
+            y_mean,
+            y_std,
+            features,
+        ) = get_survey_dataloaders("mental_health", use_train_weights, seed)
+        input_size = len(features)
+
+        return (train, val, test, input_size, X_mean, X_std, y_mean, y_std, None, None)

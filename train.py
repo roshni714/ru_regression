@@ -23,9 +23,11 @@ def objective(
     p_test_lo,
     p_test_hi,
     unobserved,
+    use_train_weights,
     n_train,
     n_test_sweep,
     method,
+    model_class,
     loss,
     gamma,
     seed,
@@ -51,6 +53,7 @@ def objective(
         p_test_lo,
         p_test_hi,
         n_test_sweep,
+        use_train_weights,
         seed,
     )
 
@@ -102,7 +105,14 @@ def objective(
             model_path, dataset, method, loss, p_train, seed
         )
 
-    model = module(input_size=input_size, loss=loss_fn, y_mean=y_mean, y_scale=y_std)
+    torch.manual_seed(0)
+    model = module(
+        input_size=input_size,
+        model_class=model_class,
+        loss=loss_fn,
+        y_mean=y_mean,
+        y_scale=y_std,
+    )
     trainer = Trainer(
         accelerator="gpu",
         callbacks=[checkpoint_callback],
@@ -124,6 +134,9 @@ def objective(
             all_res[0]["p_test"] = p_test
             all_res[0]["unobserved"] = unobserved
             res.append(all_res[0])
+    elif dataset == "survey":
+        all_res = trainer.test(dataloaders=tests, ckpt_path="best")
+        res.append(all_res[0])
     else:
         for i, test_loader in enumerate(tests):
             all_res = trainer.test(dataloaders=test_loader, ckpt_path="best")
@@ -143,6 +156,7 @@ def objective(
 @argh.arg("--n_train", default=7000)
 @argh.arg("--n_test_sweep", default=5)
 @argh.arg("--unobserved", default=None)
+@argh.arg("--use_train_weights")
 # @argh.arg("--batch_size", default=128)
 @argh.arg("--seed", default=0)
 # Save
@@ -152,6 +166,7 @@ def objective(
 @argh.arg("--method", default="ru_regression")
 @argh.arg("--loss", default="squared_loss")
 @argh.arg("--gamma", default=1.0)
+@argh.arg("--model_class", default="neural_network")
 # Epochs
 @argh.arg("--epochs", default=40)
 def main(
@@ -165,10 +180,12 @@ def main(
     unobserved=None,
     n_train=7000,
     n_test_sweep=5,
+    use_train_weights=False,
     seed=0,
     save="baseline_experiments",
     method="ru_regression",
     loss="squared_loss",
+    model_class="neural_network",
     gamma=1.0,
     epochs=40,
     #    batch_size=128,
@@ -182,8 +199,10 @@ def main(
         p_test_lo=p_test_lo,
         p_test_hi=p_test_hi,
         unobserved=unobserved,
+        use_train_weights=use_train_weights,
         n_train=n_train,
         n_test_sweep=n_test_sweep,
+        model_class=model_class,
         seed=seed,
         method=method,
         loss=loss,
@@ -199,6 +218,8 @@ def main(
         d=d,
         method=method,
         loss=loss,
+        model_class=model_class,
+        use_train_weights=use_train_weights,
         gamma=gamma,
         seed=seed,
         save=save,

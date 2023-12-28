@@ -1,5 +1,5 @@
 import torch
-from modules import BasicModel, RockafellarUryasevModel
+from modules import BasicModel, RockafellarUryasevModel, JointRockafellarUryasevModel
 from utils import get_bound_function, get_dataset
 from reporting import report_regression
 import argh
@@ -91,6 +91,10 @@ def main(
     if method == "ru_regression":
         r_y, alpha = model(r_X)
         r_y = r_y.detach().numpy()
+    elif method == "joint_ru_regression":
+        r_y = model(r_X)
+        r_y = r_y.detach().numpy()
+        alpha = model.alpha.detach().numpy().item() * np.ones(r_y.shape)
     else:
         r_y = model(r_X).detach().numpy()
         alpha = np.zeros(r_y.shape)

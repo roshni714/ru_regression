@@ -7,8 +7,14 @@ def generate_shift_one_dim_dataset(n, p, seed):
     rng = np.random.RandomState(seed)
     us = rng.binomial(n=1, p=p, size=n)
     xs = rng.uniform(0.0, 10.0, size=n)
+    zs = xs <= 6
     noise = rng.normal(0.0, 1.0, size=n)
-    ys = np.sqrt(xs) + (np.sqrt(xs) * 3 + 1) * us + noise
+    big_noise = (2 * rng.binomial(n=1, p=0.5, size=n) - 1) * 10
+    ys = (
+        zs * (np.sqrt(xs) + (np.sqrt(xs) * 3 + 1) * us)
+        + (1 - zs) * 10 * (2 * us - 1)
+        + noise
+    )
 
     return xs.reshape(-1, 1), ys.reshape(-1, 1)
 
@@ -30,7 +36,7 @@ def get_shift_one_dim_dataloaders(
     y_tests = []
     for p_test in p_tests:
         X_test, y_test = generate_shift_one_dim_dataset(
-            n=10000, p=p_test, seed=seed + 1
+            n=20000, p=p_test, seed=seed + 1
         )
         X_tests.append(X_test)
         y_tests.append(y_test)
