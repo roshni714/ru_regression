@@ -4,7 +4,9 @@ import torch
 import os
 import unittest
 from torch.utils.data import DataLoader, Dataset, random_split, TensorDataset
-
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from scipy.interpolate import interp1d
+from sklearn.isotonic import IsotonicRegression
 
 np.random.seed(0)
 
@@ -16,11 +18,28 @@ def standardize(data):
     return data, mu, scale
 
 
+def learn_conversion_mental_health():
+    df = pd.read_csv("/home/groups/swager/rsahoo/brfss_mental_health.csv")
+    df["PHQ_4"] = df["ADPLEAS1"] + df["ADDOWN1"] + df["FEELNERV"] + df["STOPWORY"]
+    y = df["PHQ_4"].to_numpy().flatten() - 4.0
+    X = df["MENTHLTH"].to_numpy().reshape(len(df), 1)
+    model = IsotonicRegression().fit(X, y)
+    z = np.linspace(min(X), max(X), 1000).reshape(1000, 1)
+    w = model.predict(z)
+    inv_model = interp1d(
+        z.flatten(), w.flatten(), bounds_error=False, fill_value=(min(w), max(w))
+    )
+    return inv_model
+
+
 def _load_data(dataset, outcome=None):
     if "brfss" in dataset:
         df = pd.read_csv("/home/groups/swager/mreitsma/{}_num.csv".format(dataset))
         if outcome is not None:
             df = df.dropna(axis=0, subset=outcome).reset_index()
+
+        model = learn_conversion_mental_health()
+        df["mental_health"] = model(df["mental_health"])
 
         remove_states = set(
             [
@@ -57,7 +76,7 @@ def _load_data(dataset, outcome=None):
 
     elif "hps" in dataset:
         df = pd.read_csv("/home/groups/swager/mreitsma/hps_prepped_date_novaxcat.csv")
-        df["mental_health"] = df["sum_mh"]
+        df["mental_health"] = df["sum_mh"] - 4.0
         #       df[["ANXIOUS", "DOWN", "WORRY", "INTEREST"]].max(axis=1)
         #       mapping = {1: 0, 2: 7, 3: 15, 4: 30}
         #       df["mental_health"] = df["mental_health"].map(mapping)
@@ -107,54 +126,125 @@ def _load_data(dataset, outcome=None):
 
     if outcome is not None:
         y = df[[outcome]]
-        #        return X[:1000], y[:1000], weights[:1000], X.columns
+        #        return X[:40000], y[:40000], weights[:40000], X.columns
         return X, y, weights, X.columns
     else:
         return X, weights, X.columns
 
 
-def get_survey_dataloaders(outcome, use_train_weights, seed):
-    X, y, r, features = _load_data("hps_2021", outcome)
-    X_test, y_test, r_test, test_features = _load_data("brfss_2021", outcome)
-    assert sum(features == test_features) == len(features)
-    y_test = (y_test / 30) * (12)
-    y -= 4
-    #    y /= 16.
-    #    import pdb
-    #    pdb.set_trace()
-    #    X_test = X.copy()
-    #    y_test = y.copy()
-    #    r_test = r.copy()
+def learn_train_weights(X0, X1, weight_mask):
+    rng = np.random.RandomState(30)
 
-    r /= r.sum()
-    r_test /= r_test.sum()
+    #    if len(X0) > len(X1):
+    #        permutation = rng.permutation(X0.shape[0])
+
+    #        dist0_X = X0[permutation[:len(X1)], ]
+    #        dist1_X = X1
+    #    else:
+    #        permutation = rng.permutation(X1.shape[0])
+    #        dist0_X = X0
+    #        dist1_X = X1[permutation[:len(X0)],]
+
+    dist0_X = X0
+    dist1_X = X1
+    dist0_y = np.zeros(dist0_X.shape[0])
+    dist1_y = np.ones(dist1_X.shape[0])
+
+    all_X = np.vstack((dist0_X, dist1_X))
+    all_y = np.hstack((dist0_y, dist1_y))
+
+    clf = DecisionTreeClassifier(class_weight="balanced").fit(
+        all_X[:, weight_mask], all_y
+    )
+
+    def density_ratio_function(X):
+        ratio = clf.predict_proba(X[:, weight_mask])[:, 1] / np.clip(
+            clf.predict_proba(X[:, weight_mask])[:, 0], a_min=1e-2, a_max=1.0
+        )
+        #         import pdb
+        #         pdb.set_trace()
+
+        return ratio.reshape(X.shape[0], 1, 1)
+
+    return density_ratio_function
+
+
+def get_survey_dataloaders(outcome, use_train_weights, seed):
+    X, y, _, features = _load_data("hps_2021", outcome)
+    X_test, y_test, _, test_features = _load_data("brfss_2021", outcome)
+
+    weight_mask = []
+    for feat in features:
+        if (
+            feat in ["age_grp", "male", "edu_cat", "income_detailed"]
+            or "race_eth" in feat
+        ):
+            weight_mask.append(True)
+        else:
+            weight_mask.append(False)
+    assert sum(features == test_features) == len(features)
+
+    #    r /= r.sum()
+    #    r_test /= r_test.sum()
 
     rng = np.random.RandomState(seed)
     permutation = rng.permutation(X.shape[0])
-    index_train = permutation[: int(0.60 * X.shape[0])]
-    index_val = permutation[int(0.60 * X.shape[0]) :]
+    index_train_and_val = permutation[: int(0.60 * X.shape[0])]
+    index_test2 = permutation[int(0.60 * X.shape[0]) :]
+    index_train = index_train_and_val[: int(0.60 * len(index_train_and_val))]
+    index_val = index_train_and_val[int(0.60 * len(index_train_and_val)) :]
     X_train = X.loc[index_train].to_numpy()
     y_train = y.loc[index_train].to_numpy()
-    r_train = r.loc[index_train].to_numpy()
-    X_test = X_test.to_numpy()
-    y_test = y_test.to_numpy()
-    r_test = r_test.to_numpy()
+    #    r_train = r.loc[index_train].to_numpy()
+
+    X_test2 = X.loc[index_test2].to_numpy()
+    y_test2 = y.loc[index_test2].to_numpy()
+    #    r_test2 = r.loc[index_test2].to_numpy()
+
     X_val = X.loc[index_val].to_numpy()
     y_val = y.loc[index_val].to_numpy()
-    r_val = r.loc[index_val].to_numpy()
+    #    r_val = r.loc[index_val].to_numpy()
+
+    X_test = X_test.to_numpy()
+    y_test = y_test.to_numpy()
+    #    r_test = r_test.to_numpy()
 
     y_test = y_test[:, None]
-    r_test = r_test[:, None]
+    #   r_test = r_test[:, None]
     y_train = y_train[:, None]
-    r_train = r_train[:, None]
-    r_val = r_val[:, None]
+    ##    r_train = r_train[:, None]
+    #   r_val = r_val[:, None]
     y_val = y_val[:, None]
+    y_test2 = y_test2[:, None]
+    #    r_test2 = r_test2[:, None]
 
-    print("train: ", len(X_train), "val: ", len(X_val), "test: ", len(X_test))
+    print(
+        "train: ",
+        len(X_train),
+        "val: ",
+        len(X_val),
+        "test: ",
+        len(X_test),
+        "test2:",
+        len(X_test2),
+    )
 
     X_train, x_train_mu, x_train_scale = standardize(X_train)
     X_val = (X_val - x_train_mu) / x_train_scale
     X_test = (X_test - x_train_mu) / x_train_scale
+    X_test2 = (X_test2 - x_train_mu) / x_train_scale
+
+    train_X = np.vstack((X_train, X_val))
+    density_ratio_function = learn_train_weights(train_X, X_test, weight_mask)
+    #    r_test2 = density_ratio_function(X_test2)
+    r_test2 = None
+
+    if use_train_weights:
+        r_train = density_ratio_function(X_train)
+        r_val = density_ratio_function(X_val)
+    else:
+        r_val = None
+        r_train = None
 
     if outcome in ["bmi"]:
         y_train, y_train_mu, y_train_scale = standardize(y_train)
@@ -162,27 +252,30 @@ def get_survey_dataloaders(outcome, use_train_weights, seed):
         y_train_mu = y_train_mu.item()
         y_train_scale = y_train_scale.item()
         y_test = (y_test - y_train_mu) / y_train_scale
+        y_test2 = (y_test2 - y_train_mu) / y_train_scale
     else:
         y_train_mu = 0
         y_train_scale = 1
 
-    train_loaders, val_loaders, test_loader = format_dataloaders(
-        X_train,
-        y_train,
-        r_train,
-        X_val,
-        y_val,
-        r_val,
-        X_test,
-        y_test,
-        r_test,
-        use_train_weights,
-        seed,
+    train_loader, val_loader, test_loaders = format_dataloaders(
+        X_train=X_train,
+        y_train=y_train,
+        r_train=r_train,
+        X_val=X_val,
+        y_val=y_val,
+        r_val=r_val,
+        X_test=X_test,
+        y_test=y_test,
+        r_test=None,
+        X_test2=X_test2,
+        y_test2=y_test2,
+        r_test2=r_test2,
     )
+
     return (
-        train_loaders,
-        val_loaders,
-        test_loader,
+        train_loader,
+        val_loader,
+        test_loaders,
         x_train_mu,
         x_train_scale,
         y_train_mu,
@@ -194,55 +287,39 @@ def get_survey_dataloaders(outcome, use_train_weights, seed):
 def format_dataloaders(
     X_train,
     y_train,
-    r_train,
     X_val,
     y_val,
-    r_val,
     X_test,
     y_test,
-    r_test,
-    use_train_weights,
-    seed=0,
+    X_test2,
+    y_test2,
+    r_train=None,
+    r_val=None,
+    r_test=None,
+    r_test2=None,
 ):
-    rng = np.random.RandomState(seed + 2)
-    permutation = rng.permutation(X_train.shape[0])
-    X_train = X_train[permutation, :]
-    y_train = y_train[permutation]
-    r_train = r_train[permutation]
+    def helper(X, y, r):
+        X = torch.Tensor(X)
+        y = torch.Tensor(y).squeeze(dim=2)
+        if r is not None:
+            r = torch.Tensor(r).squeeze(dim=2)
+            dataset = TensorDataset(X, y, r)
+        else:
+            dataset = TensorDataset(X, y)
+        return dataset
 
-    train_lengths = [len(X_train)]
+    train = helper(X_train, y_train, r_train)
+    val = helper(X_val, y_val, r_val)
+    test = helper(X_test, y_test, r_test)
+    test2 = helper(X_test2, y_test2, r_test2)
 
-    X_train = torch.Tensor(X_train)
-    y_train = torch.Tensor(y_train).squeeze(dim=2)
-    r_train = torch.Tensor(r_train).squeeze(dim=2)
-
-    if use_train_weights:
-        train = TensorDataset(X_train, y_train, r_train)
-        val = TensorDataset(
-            torch.Tensor(X_val),
-            torch.Tensor(y_val).squeeze(dim=2),
-            torch.Tensor(r_val).squeeze(dim=2),
-        )
-
-    else:
-        train = TensorDataset(X_train, y_train)
-        val = TensorDataset(
-            torch.Tensor(X_val),
-            torch.Tensor(y_val).squeeze(dim=2),
-        )
-
-    train_loader = DataLoader(train, batch_size=10000, shuffle=True)
-
+    train_loader = DataLoader(train, batch_size=20000, shuffle=True)
     val_loader = DataLoader(val, batch_size=len(val), shuffle=False)
-    test = TensorDataset(
-        torch.Tensor(X_test),
-        torch.Tensor(y_test).squeeze(dim=2),
-        torch.Tensor(r_test).squeeze(dim=2),
-    )
     test_loader = DataLoader(test, batch_size=len(test), shuffle=False)
+    test2_loader = DataLoader(test2, batch_size=len(test2), shuffle=False)
 
     return (
         train_loader,
         val_loader,
-        test_loader,
+        [test_loader, test2_loader],
     )

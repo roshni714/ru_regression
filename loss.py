@@ -20,6 +20,12 @@ class RockafellarUryasevLoss:
         self.bound_function = bound_function
         self.loss_name = loss
 
+    def inner_loss(self, y, h_out, sample_weights=None):
+        if sample_weights is not None:
+            return self.loss(h_out, y) * sample_weights.to(h_out.get_device())
+        else:
+            return self.loss(h_out, y)
+
     def __call__(self, x, y, h_out, alpha_out, sample_weights=None):
         assert y.shape == h_out.shape
         assert y.shape == alpha_out.shape or alpha_out.shape[0] == 1

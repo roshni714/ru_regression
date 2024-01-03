@@ -63,6 +63,8 @@ def objective(
         mode="min",
     )
 
+    early_stopping_callback = callbacks.EarlyStopping(monitor="val_loss", patience=3)
+
     if method == "ru_regression":
         module = RockafellarUryasevModel
         loss_fn = RockafellarUryasevLoss(
@@ -113,15 +115,16 @@ def objective(
         y_mean=y_mean,
         y_scale=y_std,
     )
+
     trainer = Trainer(
         accelerator="gpu",
-        callbacks=[checkpoint_callback],
+        callbacks=[checkpoint_callback, early_stopping_callback],
         max_epochs=epochs,
         logger=logger,
-        val_check_interval=0.1,
-        log_every_n_steps=1,
+        val_check_interval=0.25,
     )
 
+    torch.manual_seed(0)
     trainer.fit(model, train_dataloaders=train, val_dataloaders=val)
     trainer.save_checkpoint(save_path)
     res = []
@@ -135,8 +138,16 @@ def objective(
             all_res[0]["unobserved"] = unobserved
             res.append(all_res[0])
     elif dataset == "survey":
-        all_res = trainer.test(dataloaders=tests, ckpt_path="best")
-        res.append(all_res[0])
+        target_res = trainer.test(dataloaders=tests[0], ckpt_path="best")
+        val_res = trainer.test(dataloaders=tests[1], ckpt_path="best")
+        target_res[0]["hps_ru_loss"] = val_res[0]["test_ru_loss"]
+        target_res[0]["hps_ru_loss_se"] = val_res[0]["test_ru_loss_se"]
+        target_res[0]["hps_mse"] = val_res[0]["test_mse"]
+        target_res[0]["hps_mse_se"] = val_res[0]["test_mse_se"]
+        target_res[0]["hps_loss"] = val_res[0]["test_loss"]
+        target_res[0]["hps_loss_se"] = val_res[0]["test_loss_se"]
+
+        res.append(target_res[0])
     else:
         for i, test_loader in enumerate(tests):
             all_res = trainer.test(dataloaders=test_loader, ckpt_path="best")
