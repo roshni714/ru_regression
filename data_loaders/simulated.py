@@ -3,7 +3,7 @@ import numpy as np
 from data_loaders.dataloader_utils import get_dataloaders
 
 
-def generate_shift_one_dim_dataset(n, p, seed):
+def generate_heteroscedastic_one_dim_dataset(n, p, seed):
     rng = np.random.RandomState(seed)
     us = rng.binomial(n=1, p=p, size=n)
     xs = rng.uniform(0.0, 10.0, size=n)
@@ -19,12 +19,26 @@ def generate_shift_one_dim_dataset(n, p, seed):
     return xs.reshape(-1, 1), ys.reshape(-1, 1)
 
 
-def get_shift_one_dim_dataloaders(
+def generate_homoscedastic_one_dim_dataset(n, p, seed):
+    rng = np.random.RandomState(seed)
+    us = rng.binomial(n=1, p=p, size=n)
+    xs = rng.uniform(0.0, 6.0, size=n)
+    noise = rng.normal(0.0, 1.0, size=n)
+    big_noise = (2 * rng.binomial(n=1, p=0.5, size=n) - 1) * 10
+    ys = (np.sqrt(xs) + (np.sqrt(xs) * 3 + 1) * us) + noise
+
+    return xs.reshape(-1, 1), ys.reshape(-1, 1)
+
+
+def get_one_dim_dataloaders(
     dataset, n_train, seed, p_train, p_test_lo, p_test_hi, n_test_sweep
 ):
-    X_val, y_val = generate_shift_one_dim_dataset(
-        n=int(n_train * 0.2), p=p_train, seed=seed
-    )
+    if "homoscedastic" in dataset:
+        generate_data = generate_homoscedastic_one_dim_dataset
+    else:
+        generate_data = generate_heteroscedastic_one_dim_dataset
+
+    X_val, y_val = generate_data(n=int(n_train * 0.2), p=p_train, seed=seed)
 
     if n_test_sweep == 1:
         p_tests = [p_test_lo]
@@ -35,15 +49,11 @@ def get_shift_one_dim_dataloaders(
     X_tests = []
     y_tests = []
     for p_test in p_tests:
-        X_test, y_test = generate_shift_one_dim_dataset(
-            n=20000, p=p_test, seed=seed + 1
-        )
+        X_test, y_test = generate_data(n=20000, p=p_test, seed=seed + 1)
         X_tests.append(X_test)
         y_tests.append(y_test)
 
-    X_train, y_train = generate_shift_one_dim_dataset(
-        n=n_train, p=p_train, seed=seed + 2
-    )
+    X_train, y_train = generate_data(n=n_train, p=p_train, seed=seed + 2)
     return (
         get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests, seed),
         p_tests,
