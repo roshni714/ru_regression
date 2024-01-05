@@ -4,8 +4,15 @@ import numpy as np
 import torch
 import os
 
+np.random.seed(100)
 
-def _load_mimic_los(unobserved):
+
+def _load_mimic_los(dataset):
+    l = dataset.split("_")
+    if len(l) == 1:
+        weight_type = None
+    else:
+        weight_type = l[1]
     df = pd.read_csv("data_loaders/data/mimic_2022/mimic_051522_1.csv")
     df2 = pd.read_csv("data_loaders/data/mimic_2022/mimic_051522_2.csv")
     total_df = pd.concat([df, df2], ignore_index=True)
@@ -30,32 +37,21 @@ def _load_mimic_los(unobserved):
     }
 
     total_df = total_df[total_df["age_on_adm"] < 300.0]
-    #    total_df['los'].where(total_df['los'] >= 7, 31)
-
-    #    total_df['los'].where(total_df['los'] >= 10, 10)
-    total_df = total_df[total_df["los"] <= 10]
+    total_df = total_df[total_df["los"] <= 14]
     total_df = total_df[total_df["bp_diastolic"] <= 375.0]
     total_df = total_df[total_df["bp_systolic"] <= 375.0]
     total_df = total_df[total_df["o2sat"] <= 100.0]
     total_df = total_df[total_df["resp_rate"] <= 300.0]
     total_df = total_df[total_df["temp_fahren"] <= 113.0]
-
-    # total_df["weight_avg_lbs"] = total_df["weight_avg_lbs"].where(total_df["weight_avg_lbs"] >= 250, 250)
-    # total_df["fio2"] = total_df["fio2"].where(total_df["fio2"] >= 100, 100)
     total_df = total_df.fillna(impute_vals)
-    total_df["gender"] = total_df["gender"].astype("category").cat.codes
-    total_df["gender"] = total_df["gender"].replace(to_replace=0, value=2)
-    total_df["ethnicity"] = total_df["ethnicity"].where(
-        total_df["ethnicity"] == "[WHITE]", 2
+
+    total_df["gender"] = total_df["gender"].map({"M": 1.0, "F": 0.0})
+    total_df["ethnicity"] = total_df["ethnicity"].apply(
+        lambda x: 0.0 if x != "[WHITE]" else 1.0
     )
-    total_df["ethnicity"] = total_df["ethnicity"].replace(to_replace="[WHITE]", value=1)
+    total_df = total_df.reset_index()
 
-    # total_df['fio2'] = total_df['fio2'].apply(lambda x: x if x > 1 else 100 * x)
-    # total_df = total_df[total_df["fio2"] <= 100.]
-
-    #     update_vals = df.where(total_df["fio2"] < 1)
-    #     total_df[update_vals]["fio2"] *= total_df[update_vals]["fio2"] * 100
-
+    r = compute_weights(total_df, weight_type)
     features = [
         "cap_refill",
         "bp_diastolic",
@@ -74,71 +70,72 @@ def _load_mimic_los(unobserved):
         "temp_fahren",
         "weight_avg_lbs",
         "ph",
+        "gender",
     ]
-    total_df = total_df.reset_index()
-    return total_df[features], total_df[[unobserved]], total_df["los"]
+    return total_df[features], total_df["los"], r
 
 
-def generate_weights(D_train, D_test, p, seed):
-    D = (D_test - min(D_train)) / (max(D_train) - min(D_train))
-    sample_weights = D ** (p)
-    sample_weights /= sum(sample_weights)
-    return torch.Tensor(sample_weights)
+def compute_weights(total_df, weight_type):
+    if weight_type == "los":
+        r = 1 / total_df["los"].to_numpy()
+    elif weight_type == "age":
+        r = 1 / total_df["age_on_adm"].to_numpy()
+    elif weight_type == "gender":
+        r = total_df["gender"]
+    elif weight_type == "ethnicity":
+        r = total_df["ethnicity"]
+    elif weight_type == None:
+        r = np.ones(total_df["age_on_adm"].to_numpy().shape)
+    return r
 
 
-def get_mimic_dataloaders(
-    seed, unobserved, p_train, p_test_lo, p_test_hi, n_test_sweep
-):
-    X, z, y = _load_mimic_los(unobserved)
+def get_mimic_dataloaders(dataset, seed):
+    X, y, r = _load_mimic_los(dataset)
 
-    rng = np.random.RandomState(seed)
+    rng = np.random.RandomState(1000)
     permutation = rng.permutation(X.shape[0])
     index_train = permutation[: int(0.60 * X.shape[0])]
     index_test = permutation[int(0.60 * X.shape[0]) :]
 
-    D_test = z.loc[index_test].to_numpy()
-    D_train = z.loc[index_train].to_numpy()
-
     X_train = X.loc[index_train].to_numpy()
-    y_train = y.loc[index_train].to_numpy()
+    y_train = y.loc[index_train].to_numpy().reshape(len(index_train), 1, 1)
+    r_train = r[index_train, None, None]
+
+    X_test = X.loc[index_test].to_numpy()
+    y_test = y.loc[index_test].to_numpy().reshape(len(index_test), 1, 1)
+    r_test = r[index_test, None, None]
 
     permutation = rng.permutation(X_train.shape[0])
     index_train = permutation[: int(0.60 * X_train.shape[0])]
     index_val = permutation[int(0.60 * X_train.shape[0]) :]
     X_train_new = X_train[index_train, :]
     X_val = X_train[index_val, :]
-    y_train_new = y_train[index_train, None]
-    y_val = y_train[index_val, None]
+    y_train_new = y_train[index_train, :, :]
+    y_val = y_train[index_val, :, :]
+    r_train_new = r_train[index_train, :, :]
+    r_val = r_train[index_val, :, :]
 
-    if n_test_sweep == 1:
-        p_tests = [p_test_lo]
-    else:
-        p_tests = list(np.linspace(p_test_lo, p_test_hi, n_test_sweep))
+    def generate_data(X, y, r, n):
+        idx = np.random.choice(len(y), size=n, p=(r / r.sum()).flatten())
+        X_new = X[idx, :]
+        y_new = y[idx, :]
+        return X_new, y_new
 
-    test_weights = []
-    X_test = X.loc[index_test].to_numpy()
-    y_test = y.loc[index_test].to_numpy()
-    y_test = y_test[:, None]
-    X_tests = [X_test]
-    y_tests = [y_test]
+    X_train_new, y_train_new = generate_data(
+        X_train_new, y_train_new, r_train_new, n=10000
+    )
+    X_val, y_val = generate_data(X_val, y_val, r_val, n=4000)
+    X_test_biased, y_test_biased = generate_data(X_test, y_test, r_test, n=len(X_test))
 
     print("train: ", len(X_train_new), "val: ", len(X_val), "test: ", len(X_test))
 
-    for p_test in p_tests:
-        sample_weights = generate_weights(D_train, D_test, p_test, seed=seed)
-        test_weights.append(sample_weights)
-
-    return (
-        get_dataloaders(
-            X_train_new,
-            y_train_new,
-            X_val,
-            y_val,
-            X_tests,
-            y_tests,
-            seed,
-            batchsize=1024,
-        ),
-        p_tests,
-        test_weights,
+    return get_dataloaders(
+        X_train_new,
+        y_train_new,
+        X_val,
+        y_val,
+        X_test,
+        y_test,
+        X_test_biased,
+        y_test_biased,
     )

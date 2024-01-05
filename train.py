@@ -7,7 +7,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import numpy as np
 import os
 import argh
-from reporting import report_results
+from reporting import report_results, report_regression
 from utils import get_bound_function, get_dataset
 import torch
 
@@ -22,7 +22,6 @@ def objective(
     p_train,
     p_test_lo,
     p_test_hi,
-    unobserved,
     use_train_weights,
     n_train,
     n_test_sweep,
@@ -48,7 +47,6 @@ def objective(
         dataset,
         n_train,
         d,
-        unobserved,
         p_train,
         p_test_lo,
         p_test_hi,
@@ -62,8 +60,6 @@ def objective(
         save_top_k=1,
         mode="min",
     )
-
-    early_stopping_callback = callbacks.EarlyStopping(monitor="val_loss", patience=3)
 
     if method == "ru_regression":
         module = RockafellarUryasevModel
@@ -118,7 +114,7 @@ def objective(
 
     trainer = Trainer(
         accelerator="gpu",
-        callbacks=[checkpoint_callback, early_stopping_callback],
+        callbacks=[checkpoint_callback],
         max_epochs=epochs,
         logger=logger,
         val_check_interval=0.25,
@@ -130,13 +126,18 @@ def objective(
     res = []
     trainer
 
-    if dataset == "mimic":
-        for i, p_test in enumerate(p_tests):
-            model.sample_weights = test_weights[i]
-            all_res = trainer.test(dataloaders=tests[0], ckpt_path="best")
-            all_res[0]["p_test"] = p_test
-            all_res[0]["unobserved"] = unobserved
-            res.append(all_res[0])
+    if "mimic" in dataset:
+        target_res = trainer.test(dataloaders=tests[0], ckpt_path="best")
+        val_res = trainer.test(dataloaders=tests[1], ckpt_path="best")
+        target_res[0]["heldout_train_ru_loss"] = val_res[0]["test_ru_loss"]
+        target_res[0]["heldout_train_ru_loss_se"] = val_res[0]["test_ru_loss_se"]
+        target_res[0]["heldout_train_mse"] = val_res[0]["test_mse"]
+        target_res[0]["heldout_train_mse_se"] = val_res[0]["test_mse_se"]
+        target_res[0]["heldout_train_loss"] = val_res[0]["test_loss"]
+        target_res[0]["heldout_train_loss_se"] = val_res[0]["test_loss_se"]
+
+        res.append(target_res[0])
+
     elif dataset == "survey":
         target_res = trainer.test(dataloaders=tests[0], ckpt_path="best")
         val_res = trainer.test(dataloaders=tests[1], ckpt_path="best")
@@ -153,7 +154,46 @@ def objective(
             all_res = trainer.test(dataloaders=test_loader, ckpt_path="best")
             all_res[0]["p_test"] = p_tests[i]
             res.append(all_res[0])
-    return res
+    return model, res, X_mean, X_std, y_mean, y_std
+
+
+def inference(
+    model, method, loss, p_train, dataset, gamma, X_mean, X_std, y_mean, y_std, seed
+):
+    save = "inference_results"
+    if dataset == "heteroscedastic_one_dim":
+        max_X = 10.0
+    else:
+        max_X = 6.0
+
+    X = np.linspace(0.0, max_X, 100)
+    r_X = (X - X_mean) / X_std
+    r_X = torch.Tensor(r_X.reshape(-1, 1))
+
+    if method == "ru_regression":
+        r_y, alpha = model(r_X)
+        r_y = r_y.detach().numpy()
+    elif method == "joint_ru_regression":
+        r_y = model(r_X)
+        r_y = r_y.detach().numpy()
+        alpha = model.alpha.detach().numpy().item() * np.ones(r_y.shape)
+    else:
+        r_y = model(r_X).detach().numpy()
+        alpha = np.zeros(r_y.shape)
+    y = r_y * y_std + y_mean
+    alpha *= y_std**2
+    report_regression(
+        dataset=dataset,
+        seed=seed,
+        save=save,
+        method=method,
+        loss=loss,
+        p_train=p_train,
+        gamma=gamma,
+        X=X,
+        y=y,
+        alpha=alpha,
+    )
 
 
 # Dataset
@@ -166,7 +206,6 @@ def objective(
 @argh.arg("--p_test_hi", default=0.8)
 @argh.arg("--n_train", default=7000)
 @argh.arg("--n_test_sweep", default=5)
-@argh.arg("--unobserved", default=None)
 @argh.arg("--use_train_weights")
 # @argh.arg("--batch_size", default=128)
 @argh.arg("--seed", default=0)
@@ -188,8 +227,7 @@ def main(
     p_train=0.2,
     p_test_lo=0.1,
     p_test_hi=0.8,
-    unobserved=None,
-    n_train=7000,
+    n_train=10000,
     n_test_sweep=5,
     use_train_weights=False,
     seed=0,
@@ -201,7 +239,7 @@ def main(
     epochs=40,
     #    batch_size=128,
 ):
-    res = objective(
+    model, res, X_mean, X_std, y_mean, y_std = objective(
         dataset=dataset,
         run_path=run_path,
         model_path=model_path,
@@ -209,7 +247,6 @@ def main(
         p_train=p_train,
         p_test_lo=p_test_lo,
         p_test_hi=p_test_hi,
-        unobserved=unobserved,
         use_train_weights=use_train_weights,
         n_train=n_train,
         n_test_sweep=n_test_sweep,
@@ -221,6 +258,21 @@ def main(
         epochs=epochs,
         #        batch_size=batch_size,
     )
+
+    if "one_dim" in dataset:
+        inference(
+            model=model,
+            method=method,
+            loss=loss,
+            p_train=p_train,
+            dataset=dataset,
+            gamma=gamma,
+            X_mean=X_mean,
+            X_std=X_std,
+            y_mean=y_mean,
+            y_std=y_std,
+            seed=seed,
+        )
     report_results(
         results=res,
         dataset=dataset,

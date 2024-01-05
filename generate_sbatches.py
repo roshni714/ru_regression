@@ -25,10 +25,6 @@ def generate_survey_runs():
     gammas = [1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
     losses = ["poisson_nll"]
     methods = ["joint_ru_regression", "ru_regression"]
-    #    methods = ["ru_regression"]
-    #    outcomes = ["marital", "vax_attitude_def", "any_ins"]
-    #    gammas = [1., 1.2, 1.4]
-    #    methods = ["lower_bound", "upper_bound", "ru_regression"]
 
     for loss in losses:
         for gamma in gammas:
@@ -57,21 +53,46 @@ def generate_survey_runs():
                         print("sleep 1", file=f)
 
 
-def generate_example_runs():
+def generate_mimic_runs():
     seed = 0
-    #    gammas = [1., 1.5, 2.0, 2.5, 3.0]
-    gammas = [1.0, 1.5, 2.0, 2.5, 3.0]
-    losses = ["poisson_nll"]
+    gammas = [1.0, 2.0, 3.0, 4.0]
+    losses = ["squared_loss"]
+    methods = ["ru_regression"]
+    #    datasets = ["mimic_los-long", "mimic_los-short", "mimic_age-old", "mimic_age-young"]
+    datasets = ["mimic_los", "mimic_age"]
+    for dataset in datasets:
+        for loss in losses:
+            for gamma in gammas:
+                for method in methods:
+                    exp_id = "{}_{}_{}_{}_12-26-23".format(dataset, method, loss, gamma)
+                    script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
+                    with open(script_fn, "w") as f:
+                        print(
+                            SBATCH_PREFACE.format(
+                                exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
+                            ),
+                            file=f,
+                        )
+
+                        base_cmd = "python train.py main --dataset {}  --method {} --epochs 20 --seed {} --save mimic --gamma {}  --loss {} --model_class neural_network".format(
+                            dataset, method, seed, gamma, loss
+                        )
+                        print(base_cmd, file=f)
+                        print("sleep 1", file=f)
+
+
+def generate_homoscedastic_example_runs():
+    seed = 0
+    gammas = [1.0, 2.0, 4.0, 8.0, 16.0]
+    losses = ["squared_loss"]
     methods = ["joint_ru_regression", "ru_regression"]
-    #    methods = ["ru_regression"]
-    #    outcomes = ["marital", "vax_attitude_def", "any_ins"]
-    #    gammas = [1., 1.2, 1.4]
-    #    methods = ["lower_bound", "upper_bound", "ru_regression"]
 
     for loss in losses:
         for gamma in gammas:
             for method in methods:
-                exp_id = "survey_{}_{}_{}_12-26-23".format(method, loss, gamma)
+                exp_id = "homoscedastic_example_{}_{}_{}_12-26-23".format(
+                    method, loss, gamma
+                )
                 script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                 with open(script_fn, "w") as f:
                     print(
@@ -81,11 +102,42 @@ def generate_example_runs():
                         file=f,
                     )
 
-                    base_cmd = "python train.py main --dataset shifted_one_dim --p_test_lo 0.5 --p_test_hi 0.5 --p_train 0.2 --n_test_sweep 1 --method {} --epochs 400 --loss squared_loss --seed {} --gamma {}".format(
+                    base_cmd = "python train.py main --dataset homoscedastic_one_dim --p_test_lo 0.5 --p_test_hi 0.5 --p_train 0.2 --n_test_sweep 1 --method {} --epochs 400 --loss squared_loss --seed {} --gamma {}".format(
                         method, seed, gamma
                     )
                     print(base_cmd, file=f)
                     print("sleep 1", file=f)
 
 
-generate_survey_runs()
+def generate_heteroscedastic_example_runs():
+    seed = 0
+    gammas = [1.0, 2.0, 4.0, 8.0, 16.0]
+    losses = ["squared_loss"]
+    methods = ["joint_ru_regression", "ru_regression"]
+
+    for loss in losses:
+        for gamma in gammas:
+            for method in methods:
+                exp_id = "heteroscedastic_example_{}_{}_{}_12-26-23".format(
+                    method, loss, gamma
+                )
+                script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
+                with open(script_fn, "w") as f:
+                    print(
+                        SBATCH_PREFACE.format(
+                            exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
+                        ),
+                        file=f,
+                    )
+
+                    base_cmd = "python train.py main --dataset heteroscedastic_one_dim --p_test_lo 0.5 --p_test_hi 0.5 --p_train 0.2 --n_test_sweep 1 --method {} --epochs 400 --loss squared_loss --seed {} --gamma {}".format(
+                        method, seed, gamma
+                    )
+                    print(base_cmd, file=f)
+                    print("sleep 1", file=f)
+
+
+generate_mimic_runs()
+# generate_survey_runs()
+# generate_homoscedastic_example_runs()
+# generate_heteroscedastic_example_runs()

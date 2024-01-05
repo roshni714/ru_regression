@@ -27,8 +27,6 @@ class RockafellarUryasevModel(LightningModule):
         self.alpha_net = torch.nn.Sequential(
             torch.nn.Linear(input_size, 64),
             torch.nn.ReLU(),
-            torch.nn.Linear(64, 64),
-            torch.nn.ReLU(),
             torch.nn.Linear(64, 1),
         )
 
@@ -46,12 +44,12 @@ class RockafellarUryasevModel(LightningModule):
     def training_step(self, batch, batch_idx):
         if len(batch) == 2:
             x, y = batch
-            r = torch.ones(y.shape) / y.shape[0]
+            r = torch.ones(y.shape)  # / y.shape[0]
         elif len(batch) == 3:
             x, y, r = batch
-            r /= r.sum()
+        #            r /= r.sum()
         h_out, alpha_out = self(x)
-        l = self.loss(x, y, h_out, alpha_out, r).sum()
+        l = self.loss(x, y, h_out, alpha_out, r).mean()
         tensorboard_logs = {
             "train_loss": l,
         }
@@ -66,13 +64,14 @@ class RockafellarUryasevModel(LightningModule):
     def validation_step(self, batch, batch_idx):
         if len(batch) == 2:
             x, y = batch
-            r = torch.ones(y.shape) / y.shape[0]
+            r = torch.ones(y.shape)  # / y.shape[0]
         elif len(batch) == 3:
             x, y, r = batch
-            r /= r.sum()
+        #            r /= r.sum()
 
         h_out, alpha_out = self(x)
-        l = self.loss(x, y, h_out, alpha_out, r).sum()
+        l = self.loss(x, y, h_out, alpha_out, r).mean()
+
         dic = {"val_loss": l}
         self.validation_step_outputs.append(dic)
         self.log("val_loss", l, prog_bar=True)
@@ -91,34 +90,67 @@ class RockafellarUryasevModel(LightningModule):
         return {"val_loss": avg_loss, "log": tensorboard_logs}
 
     def test_step(self, batch, batch_idx):
+        rng = np.random.RandomState(0)
+
         if len(batch) == 2:
             x, y = batch
-            r = torch.ones(y.shape) / y.shape[0]
+            r = torch.ones(y.shape)  # /y.shape[0]
         elif len(batch) == 3:
             x, y, r = batch
-            r /= r.sum()
+        #            r /= r.sum()
 
         h_out, alpha_out = self(x)
+        mse_sums = torch.zeros(5000)
+        ru_loss_sums = torch.zeros(5000)
+        inner_loss_sums = torch.zeros(5000)
+        for i in range(5000):
+            bootstrap_sample = rng.choice(len(y), size=len(y))
+            if self.loss.loss_name == "poisson_nll":
+                mse_loss = self.mse(
+                    torch.exp(h_out)[bootstrap_sample, :],
+                    y[bootstrap_sample, :],
+                    r[bootstrap_sample, :],
+                )
+            else:
+                mse_loss = self.mse(
+                    h_out[bootstrap_sample, :],
+                    y[bootstrap_sample, :],
+                    r[bootstrap_sample, :],
+                )
+
+            inner_loss = self.loss.inner_loss(
+                y[bootstrap_sample, :],
+                h_out[bootstrap_sample, :],
+                r[bootstrap_sample, :],
+            )
+            ru_loss = self.loss(
+                x[bootstrap_sample, :],
+                y[bootstrap_sample, :],
+                h_out[bootstrap_sample, :],
+                alpha_out[bootstrap_sample, :],
+                r[bootstrap_sample, :],
+            )
+
+            sub_r = r[bootstrap_sample, :].sum().item()
+
+            mse_sums[i] = mse_loss.mean().item()  # .sum().item() /sub_r
+            ru_loss_sums[i] = ru_loss.mean().item()  # .sum().item() /sub_r
+            inner_loss_sums[i] = inner_loss.mean().item()  # .sum().item() /sub_r
+
+        inner_loss = self.loss.inner_loss(y, h_out, r)
+        ru_loss = self.loss(x, y, h_out, alpha_out, r)
         if self.loss.loss_name == "poisson_nll":
             mse_loss = self.mse(torch.exp(h_out), y, r)
         else:
             mse_loss = self.mse(h_out, y, r)
 
-        rng = np.random.RandomState(0)
-        mse_loss_np = mse_loss.detach().cpu().numpy().flatten()
-        sums = torch.zeros(20000)
-        for i in range(20000):
-            bootstrap_sample = rng.choice(
-                list(range(len(mse_loss))), size=mse_loss.shape[0]
-            )
-            sub_mse = mse_loss[bootstrap_sample]
-            sub_r = r[bootstrap_sample]
-            sums[i] = sub_mse.sum().item() / sub_r.sum().item()
-
         dic = {
-            "test_loss": self.loss(x, y, h_out, alpha_out, r).sum(),
-            "test_mse": mse_loss.sum(),
-            "test_se": sums.std(),
+            "test_ru_loss": ru_loss.mean(),
+            "test_ru_loss_se": ru_loss_sums.std(),
+            "test_loss": inner_loss.mean(),
+            "test_loss_se": inner_loss_sums.std(),
+            "test_mse": mse_loss.mean(),
+            "test_mse_se": mse_sums.std(),
         }
 
         self.test_step_outputs.append(dic)

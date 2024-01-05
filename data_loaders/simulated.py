@@ -8,11 +8,12 @@ def generate_heteroscedastic_one_dim_dataset(n, p, seed):
     us = rng.binomial(n=1, p=p, size=n)
     xs = rng.uniform(0.0, 10.0, size=n)
     zs = xs <= 6
+    vs = rng.binomial(n=1, p=0.5, size=n)
     noise = rng.normal(0.0, 1.0, size=n)
     big_noise = (2 * rng.binomial(n=1, p=0.5, size=n) - 1) * 10
     ys = (
         zs * (np.sqrt(xs) + (np.sqrt(xs) * 3 + 1) * us)
-        + (1 - zs) * 10 * (2 * us - 1)
+        + (1 - zs) * 10 * (2 * vs - 1)
         + noise
     )
 
@@ -24,8 +25,7 @@ def generate_homoscedastic_one_dim_dataset(n, p, seed):
     us = rng.binomial(n=1, p=p, size=n)
     xs = rng.uniform(0.0, 6.0, size=n)
     noise = rng.normal(0.0, 1.0, size=n)
-    big_noise = (2 * rng.binomial(n=1, p=0.5, size=n) - 1) * 10
-    ys = (np.sqrt(xs) + (np.sqrt(xs) * 3 + 1) * us) + noise
+    ys = np.sin(xs) + us * 5 + noise
 
     return xs.reshape(-1, 1), ys.reshape(-1, 1)
 

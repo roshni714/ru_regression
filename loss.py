@@ -42,6 +42,7 @@ class RockafellarUryasevLoss:
         if sample_weights is not None:
             assert ru_loss.shape == sample_weights.shape
             ru_loss *= sample_weights.to(ru_loss.get_device())
+
         return ru_loss
 
 

@@ -1,5 +1,5 @@
 from data_loaders import (
-    get_shift_one_dim_dataloaders,
+    get_one_dim_dataloaders,
     get_shift_high_dim_dataloaders,
     get_mimic_dataloaders,
     get_survey_dataloaders,
@@ -26,7 +26,6 @@ def get_dataset(
     dataset,
     n_train,
     d,
-    unobserved,
     p_train,
     p_test_lo,
     p_test_hi,
@@ -34,7 +33,7 @@ def get_dataset(
     use_train_weights,
     seed,
 ):
-    if dataset == "shifted_one_dim":
+    if dataset == "heteroscedastic_one_dim" or dataset == "homoscedastic_one_dim":
         (
             train,
             val,
@@ -44,7 +43,7 @@ def get_dataset(
             X_std,
             y_mean,
             y_std,
-        ), p_tests = get_shift_one_dim_dataloaders(
+        ), p_tests = get_one_dim_dataloaders(
             dataset,
             n_train=n_train,
             p_train=p_train,
@@ -76,29 +75,8 @@ def get_dataset(
             seed=seed,
         )
         return train, val, test, input_size, X_mean, X_std, y_mean, y_std, p_tests, None
-    elif dataset == "mimic":
+    elif "mimic" in dataset:
         (
-            (
-                train,
-                val,
-                test,
-                input_size,
-                X_mean,
-                X_std,
-                y_mean,
-                y_std,
-            ),
-            p_tests,
-            test_weights,
-        ) = get_mimic_dataloaders(
-            unobserved=unobserved,
-            p_train=p_train,
-            p_test_lo=p_test_lo,
-            p_test_hi=p_test_hi,
-            n_test_sweep=n_test_sweep,
-            seed=seed,
-        )
-        return (
             train,
             val,
             test,
@@ -107,9 +85,8 @@ def get_dataset(
             X_std,
             y_mean,
             y_std,
-            p_tests,
-            test_weights,
-        )
+        ) = get_mimic_dataloaders(dataset, seed=seed)
+        return (train, val, test, input_size, X_mean, X_std, y_mean, y_std, None, None)
     elif dataset == "survey":
         (
             train,
