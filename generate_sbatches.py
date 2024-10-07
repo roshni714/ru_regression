@@ -169,8 +169,8 @@ def generate_heteroscedastic_example_runs():
                     print("sleep 1", file=f)
 
 
-#generate_severe_mimic_runs()
+generate_severe_mimic_runs()
 generate_survey_runs()
-#generate_survey_nn_runs()
-#generate_homoscedastic_example_runs()
-#generate_heteroscedastic_example_runs()
+generate_survey_nn_runs()
+generate_homoscedastic_example_runs()
+generate_heteroscedastic_example_runs()
