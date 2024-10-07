@@ -7,7 +7,7 @@ import numpy as np
 
 
 class RockafellarUryasevModel(LightningModule):
-    def __init__(self, input_size, model_class, loss, y_mean, y_scale):
+    def __init__(self, input_size, model_class, loss, y_mean, y_scale, normalize):
         super().__init__()
         if model_class == "neural_network":
             self.h_net = torch.nn.Sequential(
@@ -32,6 +32,9 @@ class RockafellarUryasevModel(LightningModule):
 
         self.loss = loss
         self.mse = GenericLoss("squared_loss", y_scale=y_scale)
+
+
+        self.normalize = normalize
 
         self.validation_step_outputs = []
         self.test_step_outputs = []
@@ -94,10 +97,9 @@ class RockafellarUryasevModel(LightningModule):
 
         if len(batch) == 2:
             x, y = batch
-            r = torch.ones(y.shape)  # /y.shape[0]
+            r = torch.ones(y.shape) 
         elif len(batch) == 3:
             x, y, r = batch
-        #            r /= r.sum()
 
         h_out, alpha_out = self(x)
         mse_sums = torch.zeros(5000)
@@ -131,11 +133,16 @@ class RockafellarUryasevModel(LightningModule):
                 r[bootstrap_sample, :],
             )
 
-            sub_r = r[bootstrap_sample, :].sum().item()
+            if self.normalize:
+                sub_r = r[bootstrap_sample, :].sum().item()
+                mse_sums[i] = mse_loss.sum().item() /sub_r
+                ru_loss_sums[i] = ru_loss.sum().item() /sub_r
+                inner_loss_sums[i] = inner_loss.sum().item() /sub_r
+            else:
+                mse_sums[i] = mse_loss.mean().item()
+                ru_loss_sums[i] = ru_loss.mean().item()
+                inner_loss_sums[i] = inner_loss.mean().item()
 
-            mse_sums[i] = mse_loss.mean().item()  # .sum().item() /sub_r
-            ru_loss_sums[i] = ru_loss.mean().item()  # .sum().item() /sub_r
-            inner_loss_sums[i] = inner_loss.mean().item()  # .sum().item() /sub_r
 
         inner_loss = self.loss.inner_loss(y, h_out, r)
         ru_loss = self.loss(x, y, h_out, alpha_out, r)
@@ -144,7 +151,19 @@ class RockafellarUryasevModel(LightningModule):
         else:
             mse_loss = self.mse(h_out, y, r)
 
-        dic = {
+
+        if self.normalize:
+            dic = {
+            "test_ru_loss": ru_loss.sum()/r.sum(),
+            "test_ru_loss_se": ru_loss_sums.std(),
+            "test_loss": inner_loss.sum()/r.sum(),
+            "test_loss_se": inner_loss_sums.std(),
+            "test_mse": mse_loss.sum()/r.sum(),
+            "test_mse_se": mse_sums.std(),
+        }
+
+        else:
+            dic = {
             "test_ru_loss": ru_loss.mean(),
             "test_ru_loss_se": ru_loss_sums.std(),
             "test_loss": inner_loss.mean(),

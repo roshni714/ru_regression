@@ -7,9 +7,9 @@ from torch.utils.data import DataLoader, Dataset, random_split, TensorDataset
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from scipy.interpolate import interp1d
 from sklearn.isotonic import IsotonicRegression
+from sklearn.linear_model import LinearRegression
 
 np.random.seed(0)
-
 
 def standardize(data):
     mu = data.mean(axis=0, keepdims=1)
@@ -18,7 +18,7 @@ def standardize(data):
     return data, mu, scale
 
 
-def learn_conversion_mental_health():
+def learn_conversion_30d_to_phq4():
     df = pd.read_csv("/home/groups/swager/rsahoo/brfss_mental_health.csv")
     df["PHQ_4"] = df["ADPLEAS1"] + df["ADDOWN1"] + df["FEELNERV"] + df["STOPWORY"]
     y = df["PHQ_4"].to_numpy().flatten() - 4.0
@@ -27,18 +27,20 @@ def learn_conversion_mental_health():
     z = np.linspace(min(X), max(X), 1000).reshape(1000, 1)
     w = model.predict(z)
     inv_model = interp1d(
-        z.flatten(), w.flatten(), bounds_error=False, fill_value=(min(w), max(w))
+        z.flatten(), w.flatten(), bounds_error=False, kind="previous", fill_value=(min(w), max(w))
     )
     return inv_model
 
+def _load_data(dataset, outcome=None, reduced_feature_set=False):
 
-def _load_data(dataset, outcome=None):
+    df_state_char = pd.read_csv("/home/groups/swager/rsahoo/acs_state_characteristics.csv")
+    
     if "brfss" in dataset:
         df = pd.read_csv("/home/groups/swager/mreitsma/{}_num.csv".format(dataset))
         if outcome is not None:
             df = df.dropna(axis=0, subset=outcome).reset_index()
 
-        model = learn_conversion_mental_health()
+        model = learn_conversion_30d_to_phq4()
         df["mental_health"] = model(df["mental_health"])
 
         remove_states = set(
@@ -48,38 +50,22 @@ def _load_data(dataset, outcome=None):
                 "Northern Mariana Islands",
                 "Puerto Rico",
                 "U.S. Virgin Islands",
+                "Florida"
             ]
         )
         df = df[~df["state_name"].isin(remove_states)].reset_index(drop=True)
         for race_eth in ["NH AIAN", "NH Multiple", "NH NHPI"]:
             df.loc[df["race_eth"] == race_eth, "race_eth"] = "NH Other"
 
-        df["state_name"] = df["state_name"].astype("category")
-        df["state_name"] = df["state_name"].cat.add_categories("Florida")
+        df["state_name"] = df["state_name"].astype("category")        
         df["marital"] = df["marital"].astype("category")
-        one_hot_state = pd.get_dummies(df[["state_name"]])
         one_hot_race_eth = pd.get_dummies(df[["race_eth"]])
         one_hot_marital = pd.get_dummies(df[["marital"]])
-        features = [
-            "age_grp",
-            "male",
-            "edu_cat",
-            "income_detailed",
-            "any_ins",
-            "emp_ins",
-            "medicare_ins",
-            "medicaid_ins",
-            "other_ins",
-            "household_size",
-        ]
-        weights = df[["LLCPWT"]]
 
+        df = pd.merge(df, df_state_char, on="state_name", how="left")
     elif "hps" in dataset:
         df = pd.read_csv("/home/groups/swager/mreitsma/hps_prepped_date_novaxcat.csv")
         df["mental_health"] = df["sum_mh"] - 4.0
-        #       df[["ANXIOUS", "DOWN", "WORRY", "INTEREST"]].max(axis=1)
-        #       mapping = {1: 0, 2: 7, 3: 15, 4: 30}
-        #       df["mental_health"] = df["mental_health"].map(mapping)
 
         if outcome is not None:
             df = df.dropna(axis=0, subset=outcome).reset_index()
@@ -91,12 +77,18 @@ def _load_data(dataset, outcome=None):
                 "Northern Mariana Islands",
                 "Puerto Rico",
                 "U.S. Virgin Islands",
+                "Florida"
             ]
         )
         df = df[~df["state_name"].isin(remove_states)].reset_index(drop=True)
         year = dataset.split("_")[-1]
         df = df[df.YEAR == int(year)].reset_index()
 
+        one_hot_race_eth = pd.get_dummies(df[["race_eth"]])
+        one_hot_marital = pd.get_dummies(df[["marital"]])
+        df = pd.merge(df, df_state_char, on="state_name", how="left")
+
+    if reduced_feature_set:
         features = [
             "age_grp",
             "male",
@@ -109,27 +101,62 @@ def _load_data(dataset, outcome=None):
             "other_ins",
             "household_size",
         ]
+        X = df[features]
+        X.fillna(X.mean(), inplace=True)
+        feat = sorted(list(X.columns))
+        X = X[feat]
 
-        one_hot_state = pd.get_dummies(df[["state_name"]])
-        one_hot_race_eth = pd.get_dummies(df[["race_eth"]])
-        one_hot_marital = pd.get_dummies(df[["marital"]])
+    else:
+        features = [
+            "age_grp",
+            "male",
+            "edu_cat",
+            "income_detailed",
+            "any_ins",
+            "emp_ins",
+            "medicare_ins",
+            "medicaid_ins",
+            "other_ins",
+            "household_size",
+            '4yr_college',
+            'any_health_insurance', 
+            'avg_hh_size', 
+            'edu_hs_or_less', 
+            'english_only',
+            'female_never_married', 
+            'fertility_rate', 
+            'food_stamps',
+            'graduate_degree', 
+            'hh_computer', 
+            'hh_internet', 
+            'male_never_married',
+            'mean_income', 
+            'median_house_value', 
+            'median_income', 
+            'median_rent',
+            'poverty', 
+            'private_health_insurance', 
+            'some_college_or_2yr',
+            'unemployment_rate', 
+            'us_born', 
+            'veterans', 
+            'republican_pct',
+            'tot_pop'
+        ]
 
-        weights = df[["PWEIGHT"]]
-
-    X = df[features]
-    X = X.join(one_hot_state)
-    X = X.join(one_hot_race_eth)
-    X = X.join(one_hot_marital)
-    X.fillna(X.mean(), inplace=True)
-    feat = sorted(list(X.columns))
-    X = X[feat]
-
+        X = df[features]
+        X = X.join(one_hot_race_eth)
+        X = X.join(one_hot_marital)
+        X.fillna(X.mean(), inplace=True)
+        feat = sorted(list(X.columns))
+        X = X[feat]
+        
     if outcome is not None:
         y = df[[outcome]]
         #        return X[:40000], y[:40000], weights[:40000], X.columns
-        return X, y, weights, X.columns
+        return X, y, X.columns
     else:
-        return X, weights, X.columns
+        return X, X.columns
 
 
 def learn_train_weights(X0, X1, weight_mask):
@@ -169,9 +196,9 @@ def learn_train_weights(X0, X1, weight_mask):
     return density_ratio_function
 
 
-def get_survey_dataloaders(outcome, use_train_weights, seed):
-    X, y, _, features = _load_data("hps_2021", outcome)
-    X_test, y_test, _, test_features = _load_data("brfss_2021", outcome)
+def get_survey_dataloaders(reduced_feature_set, use_train_weights, seed, y_normalize=False):
+    X, y, features = _load_data("hps_2021", "mental_health", reduced_feature_set)
+    X_test, y_test, test_features = _load_data("brfss_2021", "mental_health", reduced_feature_set)
 
     weight_mask = []
     for feat in features:
@@ -184,9 +211,6 @@ def get_survey_dataloaders(outcome, use_train_weights, seed):
             weight_mask.append(False)
     assert sum(features == test_features) == len(features)
 
-    #    r /= r.sum()
-    #    r_test /= r_test.sum()
-
     rng = np.random.RandomState(seed)
     permutation = rng.permutation(X.shape[0])
     index_train_and_val = permutation[: int(0.60 * X.shape[0])]
@@ -195,29 +219,21 @@ def get_survey_dataloaders(outcome, use_train_weights, seed):
     index_val = index_train_and_val[int(0.60 * len(index_train_and_val)) :]
     X_train = X.loc[index_train].to_numpy()
     y_train = y.loc[index_train].to_numpy()
-    #    r_train = r.loc[index_train].to_numpy()
 
     X_test2 = X.loc[index_test2].to_numpy()
     y_test2 = y.loc[index_test2].to_numpy()
-    #    r_test2 = r.loc[index_test2].to_numpy()
 
     X_val = X.loc[index_val].to_numpy()
     y_val = y.loc[index_val].to_numpy()
-    #    r_val = r.loc[index_val].to_numpy()
 
     X_test = X_test.to_numpy()
     y_test = y_test.to_numpy()
-    #    r_test = r_test.to_numpy()
 
     y_test = y_test[:, None]
-    #   r_test = r_test[:, None]
     y_train = y_train[:, None]
-    ##    r_train = r_train[:, None]
-    #   r_val = r_val[:, None]
     y_val = y_val[:, None]
     y_test2 = y_test2[:, None]
-    #    r_test2 = r_test2[:, None]
-
+    
     print(
         "train: ",
         len(X_train),
@@ -236,7 +252,6 @@ def get_survey_dataloaders(outcome, use_train_weights, seed):
 
     train_X = np.vstack((X_train, X_val))
     density_ratio_function = learn_train_weights(train_X, X_test, weight_mask)
-    #    r_test2 = density_ratio_function(X_test2)
     r_test2 = None
 
     if use_train_weights:
@@ -245,14 +260,14 @@ def get_survey_dataloaders(outcome, use_train_weights, seed):
     else:
         r_val = None
         r_train = None
-
-    if outcome in ["bmi"]:
-        y_train, y_train_mu, y_train_scale = standardize(y_train)
-        y_val = (y_val - y_train_mu) / y_train_scale
-        y_train_mu = y_train_mu.item()
-        y_train_scale = y_train_scale.item()
-        y_test = (y_test - y_train_mu) / y_train_scale
-        y_test2 = (y_test2 - y_train_mu) / y_train_scale
+        
+    if y_normalize:
+       y_train, y_train_mu, y_train_scale = standardize(y_train)
+       y_val = (y_val - y_train_mu)/y_train_scale
+       y_test = (y_test - y_train_mu)/y_train_scale
+       y_test2 = (y_test2 - y_train_mu)/y_train_scale
+       y_train_mu = y_train_mu.item()
+       y_train_scale = y_train_scale.item()
     else:
         y_train_mu = 0
         y_train_scale = 1

@@ -17,7 +17,7 @@ def generate_heteroscedastic_one_dim_dataset(n, p, seed):
         + noise
     )
 
-    return xs.reshape(-1, 1), ys.reshape(-1, 1)
+    return xs.reshape(-1, 1), ys.reshape(-1, 1, 1)
 
 
 def generate_homoscedastic_one_dim_dataset(n, p, seed):
@@ -27,7 +27,7 @@ def generate_homoscedastic_one_dim_dataset(n, p, seed):
     noise = rng.normal(0.0, 1.0, size=n)
     ys = np.sin(xs) + us * 5 + noise
 
-    return xs.reshape(-1, 1), ys.reshape(-1, 1)
+    return xs.reshape(-1, 1), ys.reshape(-1, 1, 1)
 
 
 def get_one_dim_dataloaders(
@@ -55,7 +55,7 @@ def get_one_dim_dataloaders(
 
     X_train, y_train = generate_data(n=n_train, p=p_train, seed=seed + 2)
     return (
-        get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests, seed),
+        get_dataloaders(X_train, y_train, X_val, y_val, X_tests, y_tests),
         p_tests,
     )
 

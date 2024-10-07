@@ -22,14 +22,14 @@ SAVE_PATH = "/home/users/rsahoo/ru_regression/"
 
 def generate_survey_runs():
     seed = 0
-    gammas = [1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
+    gammas = [1.0, 1.5, 2.0, 2.5, 3.0]
     losses = ["poisson_nll"]
     methods = ["joint_ru_regression", "ru_regression"]
 
     for loss in losses:
         for gamma in gammas:
             for method in methods:
-                exp_id = "survey_{}_{}_{}_12-26-23".format(method, loss, gamma)
+                exp_id = "survey_linear_{}_{}_{}_12-26-23".format(method, loss, gamma)
                 script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                 with open(script_fn, "w") as f:
                     print(
@@ -52,19 +52,51 @@ def generate_survey_runs():
                         print(base_cmd, file=f)
                         print("sleep 1", file=f)
 
-
-def generate_mimic_runs():
+def generate_survey_nn_runs():
     seed = 0
-    gammas = [1.0, 2.0, 3.0, 4.0]
+    gammas = [1.0, 1.5, 2.0, 2.5, 3.0]
+    losses = ["poisson_nll"]
+    methods = ["joint_ru_regression", "ru_regression"]
+
+    for loss in losses:
+        for gamma in gammas:
+            for method in methods:
+                exp_id = "survey_nn_{}_{}_{}_12-26-23".format(method, loss, gamma)
+                script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
+                with open(script_fn, "w") as f:
+                    print(
+                        SBATCH_PREFACE.format(
+                            exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
+                        ),
+                        file=f,
+                    )
+
+                    base_cmd = "python train.py main --dataset survey --method {} --epochs 20 --seed {} --save survey --gamma {}  --loss {} --model_class neural_network".format(
+                        method, seed, gamma, loss
+                    )
+                    print(base_cmd, file=f)
+                    print("sleep 1", file=f)
+
+                    if method == "ru_regression":
+                        base_cmd = "python train.py main --dataset survey --method {} --epochs 20 --seed {} --save survey --gamma {}  --loss {} --model_class neural_network --use_train_weights".format(
+                            method, seed, gamma, loss
+                        )
+                        print(base_cmd, file=f)
+                        print("sleep 1", file=f)
+
+
+
+def generate_severe_mimic_runs():
+    seed = 0
+    gammas = [1.0, 2.0, 4.0, 8.0, 16.0]
     losses = ["squared_loss"]
-    methods = ["ru_regression"]
-    #    datasets = ["mimic_los-long", "mimic_los-short", "mimic_age-old", "mimic_age-young"]
-    datasets = ["mimic_los", "mimic_age"]
+    methods = ["ru_regression", "joint_ru_regression"]
+    datasets = ["mimic_los-density", "mimic_los-recip-density-sq"]
     for dataset in datasets:
         for loss in losses:
             for gamma in gammas:
                 for method in methods:
-                    exp_id = "{}_{}_{}_{}_12-26-23".format(dataset, method, loss, gamma)
+                    exp_id = "{}_{}_{}_{}_1-9-24".format(dataset, method, loss, gamma)
                     script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                     with open(script_fn, "w") as f:
                         print(
@@ -137,7 +169,8 @@ def generate_heteroscedastic_example_runs():
                     print("sleep 1", file=f)
 
 
-generate_mimic_runs()
-# generate_survey_runs()
-# generate_homoscedastic_example_runs()
-# generate_heteroscedastic_example_runs()
+generate_severe_mimic_runs()
+#generate_survey_runs()
+#generate_survey_nn_runs()
+#generate_homoscedastic_example_runs()
+#generate_heteroscedastic_example_runs()
