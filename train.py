@@ -1,5 +1,5 @@
 from pytorch_lightning import Trainer, callbacks
-from modules import BasicModel, RockafellarUryasevModel, JointRockafellarUryasevModel
+from modules import RockafellarUryasevModel, JointRockafellarUryasevModel
 
 from loss import RockafellarUryasevLoss, GenericLoss
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -52,6 +52,7 @@ def objective(
         p_test_hi,
         n_test_sweep,
         use_train_weights,
+        loss,
         seed,
     )
 
@@ -90,26 +91,19 @@ def objective(
             model_path, dataset, method, int(gamma), loss, p_train, seed
         )
 
-    elif method == "erm":
-        module = BasicModel
-        loss_fn = GenericLoss(loss=loss)
-        logger = TensorBoardLogger(
-            save_dir=run_path,
-            name="logs/{}_{}_{}_p_train_{}_seed_{}".format(
-                dataset, method, loss, p_train, seed
-            ),
-        )
-        save_path = "{}/{}_{}_{}_p_train_{}_seed_{}.ckpt".format(
-            model_path, dataset, method, loss, p_train, seed
-        )
-
     torch.manual_seed(0)
+
+    if "mimic" in dataset:
+        normalize = True
+    else:
+        normalize = False
     model = module(
         input_size=input_size,
         model_class=model_class,
         loss=loss_fn,
         y_mean=y_mean,
         y_scale=y_std,
+        normalize=normalize
     )
 
     trainer = Trainer(
@@ -138,7 +132,7 @@ def objective(
 
         res.append(target_res[0])
 
-    elif dataset == "survey":
+    elif "survey" in dataset:
         target_res = trainer.test(dataloaders=tests[0], ckpt_path="best")
         val_res = trainer.test(dataloaders=tests[1], ckpt_path="best")
         target_res[0]["hps_ru_loss"] = val_res[0]["test_ru_loss"]

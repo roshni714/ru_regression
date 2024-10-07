@@ -31,6 +31,7 @@ def get_dataset(
     p_test_hi,
     n_test_sweep,
     use_train_weights,
+    loss,
     seed,
 ):
     if dataset == "heteroscedastic_one_dim" or dataset == "homoscedastic_one_dim":
@@ -87,7 +88,17 @@ def get_dataset(
             y_std,
         ) = get_mimic_dataloaders(dataset, seed=seed)
         return (train, val, test, input_size, X_mean, X_std, y_mean, y_std, None, None)
-    elif dataset == "survey":
+    elif "survey" in dataset:
+
+        l = dataset.split("_")
+        if len(l) > 1 and l[1] == "reduced":
+            reduced_feature_set = True
+        else:
+            reduced_feature_set = False
+        if loss == "squared_loss":
+            y_normalize = True
+        else:
+            y_normalize = False
         (
             train,
             val,
@@ -97,7 +108,7 @@ def get_dataset(
             y_mean,
             y_std,
             features,
-        ) = get_survey_dataloaders("mental_health", use_train_weights, seed)
+        ) = get_survey_dataloaders(reduced_feature_set, use_train_weights, seed, y_normalize=y_normalize)
         input_size = len(features)
 
         return (train, val, test, input_size, X_mean, X_std, y_mean, y_std, None, None)

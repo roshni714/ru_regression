@@ -5,5 +5,5 @@ from data_loaders.simulated import (
     generate_heteroscedastic_one_dim_dataset,
     sample_y_conditional_shift_one_dim,
 )
-from data_loaders.mimic import get_mimic_dataloaders
+from data_loaders.mimic import get_mimic_dataloaders, _load_mimic_los
 from data_loaders.survey_dataloader import get_survey_dataloaders, _load_data

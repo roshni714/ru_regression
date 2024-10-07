@@ -3,6 +3,7 @@ from data_loaders.dataloader_utils import get_dataloaders, standardize
 import numpy as np
 import torch
 import os
+from sklearn.neighbors import KernelDensity
 
 np.random.seed(100)
 
@@ -37,7 +38,7 @@ def _load_mimic_los(dataset):
     }
 
     total_df = total_df[total_df["age_on_adm"] < 300.0]
-    total_df = total_df[total_df["los"] <= 14]
+    total_df = total_df[total_df["los"] <= 10.]
     total_df = total_df[total_df["bp_diastolic"] <= 375.0]
     total_df = total_df[total_df["bp_systolic"] <= 375.0]
     total_df = total_df[total_df["o2sat"] <= 100.0]
@@ -51,16 +52,15 @@ def _load_mimic_los(dataset):
     )
     total_df = total_df.reset_index()
 
-    r = compute_weights(total_df, weight_type)
     features = [
         "cap_refill",
         "bp_diastolic",
         "bp_systolic",
         "bp_mean",
         "fio2",
+        "gcs_motor",
         "gcs_eye",
         "gcs_verbal",
-        "gcs_motor",
         "gcs_total",
         "glucose",
         "heart_rate",
@@ -69,33 +69,45 @@ def _load_mimic_los(dataset):
         "resp_rate",
         "temp_fahren",
         "weight_avg_lbs",
-        "ph",
         "gender",
+        "ph",
+        "age_on_adm",
+        "ethnicity"
     ]
-    return total_df[features], total_df["los"], r
+    rng = np.random.RandomState(1000)
+    permutation = rng.permutation(len(total_df))
+    index_train = permutation[: int(0.60 * len(total_df))]
+    index_test = permutation[int(0.60 * len(total_df)) :]
 
+    r = compute_weights(total_df, weight_type, features, index_train)
 
-def compute_weights(total_df, weight_type):
-    if weight_type == "los":
-        r = 1 / total_df["los"].to_numpy()
-    elif weight_type == "age":
-        r = 1 / total_df["age_on_adm"].to_numpy()
-    elif weight_type == "gender":
-        r = total_df["gender"]
-    elif weight_type == "ethnicity":
-        r = total_df["ethnicity"]
-    elif weight_type == None:
-        r = np.ones(total_df["age_on_adm"].to_numpy().shape)
+    return total_df[features], total_df["los"], r, features, index_train, index_test, rng
+
+def normalize(z):
+    return (z - min(z))/(max(z) - min(z))
+
+def compute_weights(total_df, weight_type, features, index_train):
+    if weight_type == "los-density":
+        data = total_df["los"].to_numpy().reshape(-1, 1)
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(data[index_train])
+        log_density = kde.score_samples(data)
+        density = np.exp(log_density)
+        weights = density
+        weights /= np.sum(weights)  # Normalize weights
+        r= weights.flatten()
+    elif weight_type == "los-recip-density-sq":
+        data = total_df["los"].to_numpy().reshape(-1, 1)
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(data[index_train])
+        log_density = kde.score_samples(data)
+        density = np.exp(log_density)
+        weights = (1 / density) ** 2
+        weights /= np.sum(weights)  # Normalize weights
+        r= weights.flatten()
     return r
 
 
 def get_mimic_dataloaders(dataset, seed):
-    X, y, r = _load_mimic_los(dataset)
-
-    rng = np.random.RandomState(1000)
-    permutation = rng.permutation(X.shape[0])
-    index_train = permutation[: int(0.60 * X.shape[0])]
-    index_test = permutation[int(0.60 * X.shape[0]) :]
+    X, y, r, features, index_train, index_test, rng = _load_mimic_los(dataset)
 
     X_train = X.loc[index_train].to_numpy()
     y_train = y.loc[index_train].to_numpy().reshape(len(index_train), 1, 1)
@@ -122,11 +134,10 @@ def get_mimic_dataloaders(dataset, seed):
         return X_new, y_new
 
     X_train_new, y_train_new = generate_data(
-        X_train_new, y_train_new, r_train_new, n=10000
+        X_train_new, y_train_new, r_train_new, n=len(X_train_new)
     )
-    X_val, y_val = generate_data(X_val, y_val, r_val, n=4000)
-    X_test_biased, y_test_biased = generate_data(X_test, y_test, r_test, n=len(X_test))
-
+    X_val, y_val = generate_data(X_val, y_val, r_val, n=len(X_val))
+#    X_test_biased, y_test_biased = generate_data(X_test, y_test, r_test, n=len(X_test))
     print("train: ", len(X_train_new), "val: ", len(X_val), "test: ", len(X_test))
 
     return get_dataloaders(
@@ -136,6 +147,5 @@ def get_mimic_dataloaders(dataset, seed):
         y_val,
         X_test,
         y_test,
-        X_test_biased,
-        y_test_biased,
+        r_test.reshape(-1, 1, 1)
     )
