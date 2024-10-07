@@ -12,6 +12,9 @@ mkdir figs
 mkdir results
 ```
 
+The MIMIC-III dataset can be obtained upon request [here](https://physionet.org/content/mimiciii/1.4/). 
+
+
 To reproduce figures from paper, run the following command to launch all experiments. After experiments are complete, run the associated notebook.
 ```
 chmod +x run_scripts.sh

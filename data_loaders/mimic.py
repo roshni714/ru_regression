@@ -7,6 +7,8 @@ from sklearn.neighbors import KernelDensity
 
 np.random.seed(100)
 
+MIMIC_PART_1_PATH="data_loaders/data/mimic_2022/mimic_051522_1.csv"
+MIMIC_PART_2_PATH="data_loaders/data/mimic_2022/mimic_051522_2.csv"
 
 def _load_mimic_los(dataset):
     l = dataset.split("_")
@@ -14,8 +16,8 @@ def _load_mimic_los(dataset):
         weight_type = None
     else:
         weight_type = l[1]
-    df = pd.read_csv("data_loaders/data/mimic_2022/mimic_051522_1.csv")
-    df2 = pd.read_csv("data_loaders/data/mimic_2022/mimic_051522_2.csv")
+    df = pd.read_csv(MIMIC_PART_1_PATH)
+    df2 = pd.read_csv(MIMIC_PART_2_PATH)
     total_df = pd.concat([df, df2], ignore_index=True)
     impute_vals = {
         "cap_refill": 0.0,
