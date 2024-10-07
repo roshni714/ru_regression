@@ -11,6 +11,11 @@ from sklearn.linear_model import LinearRegression
 
 np.random.seed(0)
 
+CONVERSION_DATA_PATH="/home/groups/swager/rsahoo/brfss_mental_health.csv"
+CENSUS_DATA_PATH= "/home/groups/swager/rsahoo/acs_state_characteristics.csv"
+BRFSS_DATA_PATH="/home/groups/swager/mreitsma/brfss_2021_num.csv"
+HPS_DATA_PATH="/home/groups/swager/mreitsma/hps_prepped_date_novaxcat.csv"
+
 def standardize(data):
     mu = data.mean(axis=0, keepdims=1)
     scale = data.std(axis=0, keepdims=1) + 1e-5
@@ -19,7 +24,7 @@ def standardize(data):
 
 
 def learn_conversion_30d_to_phq4():
-    df = pd.read_csv("/home/groups/swager/rsahoo/brfss_mental_health.csv")
+    df = pd.read_csv(CONVERSION_DATA_PATH)
     df["PHQ_4"] = df["ADPLEAS1"] + df["ADDOWN1"] + df["FEELNERV"] + df["STOPWORY"]
     y = df["PHQ_4"].to_numpy().flatten() - 4.0
     X = df["MENTHLTH"].to_numpy().reshape(len(df), 1)
@@ -33,10 +38,10 @@ def learn_conversion_30d_to_phq4():
 
 def _load_data(dataset, outcome=None, reduced_feature_set=False):
 
-    df_state_char = pd.read_csv("/home/groups/swager/rsahoo/acs_state_characteristics.csv")
+    df_state_char = pd.read_csv(CENSUS_DATA_PATH)
     
     if "brfss" in dataset:
-        df = pd.read_csv("/home/groups/swager/mreitsma/{}_num.csv".format(dataset))
+        df = pd.read_csv(BRFSS_DATA_PATH)
         if outcome is not None:
             df = df.dropna(axis=0, subset=outcome).reset_index()
 
@@ -64,7 +69,7 @@ def _load_data(dataset, outcome=None, reduced_feature_set=False):
 
         df = pd.merge(df, df_state_char, on="state_name", how="left")
     elif "hps" in dataset:
-        df = pd.read_csv("/home/groups/swager/mreitsma/hps_prepped_date_novaxcat.csv")
+        df = pd.read_csv(HPS_DATA_PATH)
         df["mental_health"] = df["sum_mh"] - 4.0
 
         if outcome is not None:

@@ -12,24 +12,11 @@ mkdir figs
 mkdir results
 ```
 
-To reproduce Figure 1, run paper-figure-1.ipynb.
-
-To reproduce Figure 2 and Table 1, edit `MODEL_PATH` and `RUN_PATH` in `run_one_dim.sh` and `MODEL_PATH` in `run_inference.sh` to the directories where you would like to save the trained models and logs, respectively. Then, run the following commands
+To reproduce figures from paper, run the following command to launch all experiments. After experiments are complete, run the associated notebook.
 ```
-chmod +x run_one_dim.sh
-./run_one_dim.sh
-./run_inference.sh
+chmod +x run_scripts.sh
+./run_scripts.sh
 ```
-
-and run paper-figure-2.ipynb and paper-table-1.ipynb.
-
-To reproduce Table 2, edit `MODEL_PATH` and `RUN_PATH` in `run_high_dim.sh`. Then, run the following commands.
-
-```
-chmod +x run_high_dim.sh
-./run_high_dim.sh
-```
-and run paper-table-2.ipynb.
 
 To cite our work:
 ```
