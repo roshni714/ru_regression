@@ -14,8 +14,7 @@ mkdir results
 
 Data: The MIMIC-III dataset can be obtained upon request [here](https://physionet.org/content/mimiciii/1.4/). The BRFSS 2021 dataset is publicly available [here](https://www.cdc.gov/brfss/annual_data/annual_2021.html), and the 2018 BRFSS Depression and Anxiety Module used in the paper is puclicly available [here](https://www.cdc.gov/brfss/questionnaires/modules/category2018.htm). The HPS 2021 dataset is publicly available [here](https://www.census.gov/programs-surveys/household-pulse-survey/datasets.html).
 
-Next, update paths to data files in `data_loaders/survey_dataloader.py` and `data_loaders/mimic.py`.
-
+Next, update paths to data files in `data_loaders/survey_dataloader.py` and `data_loaders/mimic.py` and `OUTPUT_PATH` and `SAVE_PATH` in `generate_sbatches.py.`
 
 To reproduce figures from paper, run the following command to launch all experiments. After experiments are complete, run the associated notebook.
 ```
