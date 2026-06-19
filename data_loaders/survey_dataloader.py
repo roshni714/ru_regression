@@ -11,10 +11,10 @@ from sklearn.linear_model import LinearRegression
 
 np.random.seed(0)
 
-CONVERSION_DATA_PATH="/home/groups/swager/rsahoo/brfss_mental_health.csv"
-CENSUS_DATA_PATH= "/home/groups/swager/rsahoo/acs_state_characteristics.csv"
-BRFSS_DATA_PATH="/home/groups/swager/mreitsma/brfss_2021_num.csv"
-HPS_DATA_PATH="/home/groups/swager/mreitsma/hps_prepped_date_novaxcat.csv"
+CONVERSION_DATA_PATH="data_loaders/data/brfss_mental_health.csv"
+CENSUS_DATA_PATH= "data_loaders/data/acs_state_characteristics.csv"
+BRFSS_DATA_PATH="data_loaders/data/brfss_2021_num.csv"
+HPS_DATA_PATH="data_loaders/data/hps_prepped_date_novaxcat.csv"
 
 def standardize(data):
     mu = data.mean(axis=0, keepdims=1)

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import pdb
 
 
@@ -9,6 +10,18 @@ def squared_loss(y_hat, y_true):
 
 def poisson_nll(y_hat, y_true):
     return -y_hat * y_true + torch.exp(y_hat)
+
+
+def compute_losses(y_hat, y_true, loss_name):
+    if loss_name == "squared_loss":
+        inner_loss = (y_hat - y_true) ** 2
+        mse_loss = inner_loss
+    elif loss_name == "poisson_nll":
+        inner_loss = -y_hat * y_true + np.exp(y_hat)
+        mse_loss = (np.exp(y_hat) - y_true) ** 2
+    else:
+        raise ValueError("Unsupported loss '{}'".format(loss_name))
+    return inner_loss, mse_loss
 
 
 LOSS_DIC = {"squared_loss": squared_loss, "poisson_nll": poisson_nll}

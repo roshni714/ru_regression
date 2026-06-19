@@ -1,5 +1,9 @@
 from pytorch_lightning import Trainer, callbacks
-from modules import RockafellarUryasevModel, JointRockafellarUryasevModel
+from modules import (
+    RockafellarUryasevModel,
+    JointRockafellarUryasevModel,
+    XGBoostModel,
+)
 
 from loss import RockafellarUryasevLoss, GenericLoss
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -55,6 +59,39 @@ def objective(
         loss,
         seed,
     )
+
+    if method == "xgboost":
+        model = XGBoostModel(loss=loss, epochs=epochs, seed=seed)
+        model.fit(train_loader=train, val_loader=val)
+
+        res = []
+        if "mimic" in dataset:
+            target_res = model.summarize_test(tests[0])
+            val_res = model.summarize_test(tests[1])
+            target_res["heldout_train_ru_loss"] = val_res["test_ru_loss"]
+            target_res["heldout_train_ru_loss_se"] = val_res["test_ru_loss_se"]
+            target_res["heldout_train_mse"] = val_res["test_mse"]
+            target_res["heldout_train_mse_se"] = val_res["test_mse_se"]
+            target_res["heldout_train_loss"] = val_res["test_loss"]
+            target_res["heldout_train_loss_se"] = val_res["test_loss_se"]
+            res.append(target_res)
+        elif "survey" in dataset:
+            target_res = model.summarize_test(tests[0])
+            val_res = model.summarize_test(tests[1])
+            target_res["hps_ru_loss"] = val_res["test_ru_loss"]
+            target_res["hps_ru_loss_se"] = val_res["test_ru_loss_se"]
+            target_res["hps_mse"] = val_res["test_mse"]
+            target_res["hps_mse_se"] = val_res["test_mse_se"]
+            target_res["hps_loss"] = val_res["test_loss"]
+            target_res["hps_loss_se"] = val_res["test_loss_se"]
+            res.append(target_res)
+        else:
+            for i, test_loader in enumerate(tests):
+                all_res = model.summarize_test(test_loader)
+                all_res["p_test"] = p_tests[i]
+                res.append(all_res)
+
+        return model, res, X_mean, X_std, y_mean, y_std
 
     checkpoint_callback = callbacks.model_checkpoint.ModelCheckpoint(
         monitor="val_loss",
@@ -171,6 +208,9 @@ def inference(
         r_y = model(r_X)
         r_y = r_y.detach().numpy()
         alpha = model.alpha.detach().numpy().item() * np.ones(r_y.shape)
+    elif method == "xgboost":
+        r_y = model.predict(r_X.numpy())
+        alpha = np.zeros(r_y.shape)
     else:
         r_y = model(r_X).detach().numpy()
         alpha = np.zeros(r_y.shape)
@@ -192,8 +232,8 @@ def inference(
 
 # Dataset
 @argh.arg("--dataset", default="simulated")
-@argh.arg("--model_path", default="/scratch/users/rsahoo/models")
-@argh.arg("--run_path", default="/scratch/users/rsahoo/runs")
+@argh.arg("--model_path", default="models")
+@argh.arg("--run_path", default="runs")
 @argh.arg("--d", default=2)
 @argh.arg("--p_train", default=0.2)
 @argh.arg("--p_test_lo", default=0.1)
@@ -215,8 +255,8 @@ def inference(
 @argh.arg("--epochs", default=40)
 def main(
     dataset="shifted_one_dim",
-    run_path="/scratch/users/rsahoo/runs",
-    model_path="/scratch/users/rsahoo/models",
+    run_path="runs",
+    model_path="models",
     d=2,
     p_train=0.2,
     p_test_lo=0.1,

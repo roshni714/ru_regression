@@ -7,8 +7,8 @@ from sklearn.neighbors import KernelDensity
 
 np.random.seed(100)
 
-MIMIC_PART_1_PATH="data_loaders/data/mimic_2022/mimic_051522_1.csv"
-MIMIC_PART_2_PATH="data_loaders/data/mimic_2022/mimic_051522_2.csv"
+MIMIC_PART_1_PATH="data_loaders/data/mimic_051522_1.csv"
+MIMIC_PART_2_PATH="data_loaders/data/mimic_051522_2.csv"
 
 def _load_mimic_los(dataset):
     l = dataset.split("_")

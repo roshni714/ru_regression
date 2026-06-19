@@ -11,6 +11,18 @@ def standardize(data):
     return data, mu, scale
 
 
+def unpack_tensors(loader):
+    tensors = loader.dataset.tensors
+    X = tensors[0].detach().cpu().numpy()
+    y = tensors[1].detach().cpu().numpy().reshape(-1, 1)
+    r = None
+    if len(X.shape) == 3:
+        X = X.squeeze(axis=0)
+    if len(tensors) > 2:
+        r = tensors[2].detach().cpu().numpy().reshape(-1, 1)
+    return X, y, r
+
+
 def get_dataloaders(
     X_train, y_train, X_val, y_val, X_test, y_test, r_test=None
 ):

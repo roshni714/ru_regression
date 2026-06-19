@@ -4,7 +4,7 @@ import os
 
 
 SBATCH_PREFACE = """#!/bin/bash
-#SBATCH -t 12:00:00
+#SBATCH -t 4:00:00
 #SBATCH -p gpu
 #SBATCH -c 1
 #SBATCH -G 1
@@ -14,26 +14,43 @@ SBATCH_PREFACE = """#!/bin/bash
 #SBATCH --output="{}/{}_out.log"\n
 """
 
+SBATCH_PREFACE_CPU = """#!/bin/bash
+#SBATCH -t 4:00:00
+#SBATCH -p normal
+#SBATCH -c 1
+#SBATCH --ntasks-per-node=1
+#SBATCH --job-name="{}.sh"
+#SBATCH --error="{}/{}_err.log"
+#SBATCH --output="{}/{}_out.log"\n
+"""
+
 # constants for commands
 
-OUTPUT_PATH = "/home/users/rsahoo/ru_regression/scripts/"
-SAVE_PATH = "/home/users/rsahoo/ru_regression/"
+OUTPUT_PATH = "/zfs/gsb/intermediate-yens/rsahoo/ru_regression/scripts/"
+SAVE_PATH = "/zfs/gsb/intermediate-yens/rsahoo/ru_regression/"
 
 
 def generate_survey_runs():
     seed = 0
     gammas = [1.0, 1.5, 2.0, 2.5, 3.0]
     losses = ["poisson_nll"]
-    methods = ["joint_ru_regression", "ru_regression"]
+    methods = ["joint_ru_regression", "ru_regression", "xgboost"]
 
     for loss in losses:
         for gamma in gammas:
             for method in methods:
+                if method == "xgboost" and gamma != 1.0:
+                    continue
                 exp_id = "survey_linear_{}_{}_{}_12-26-23".format(method, loss, gamma)
                 script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                 with open(script_fn, "w") as f:
+                    sbatch_preface = (
+                        SBATCH_PREFACE_CPU
+                        if method == "xgboost"
+                        else SBATCH_PREFACE
+                    )
                     print(
-                        SBATCH_PREFACE.format(
+                        sbatch_preface.format(
                             exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
                         ),
                         file=f,
@@ -61,11 +78,18 @@ def generate_survey_nn_runs():
     for loss in losses:
         for gamma in gammas:
             for method in methods:
+                if method == "xgboost" and gamma != 1.0:
+                    continue
                 exp_id = "survey_nn_{}_{}_{}_12-26-23".format(method, loss, gamma)
                 script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                 with open(script_fn, "w") as f:
+                    sbatch_preface = (
+                        SBATCH_PREFACE_CPU
+                        if method == "xgboost"
+                        else SBATCH_PREFACE
+                    )
                     print(
-                        SBATCH_PREFACE.format(
+                        sbatch_preface.format(
                             exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
                         ),
                         file=f,
@@ -90,17 +114,24 @@ def generate_severe_mimic_runs():
     seed = 0
     gammas = [1.0, 2.0, 4.0, 8.0, 16.0]
     losses = ["squared_loss"]
-    methods = ["ru_regression", "joint_ru_regression"]
+    methods = ["ru_regression", "joint_ru_regression", "xgboost"]
     datasets = ["mimic_los-density", "mimic_los-recip-density-sq"]
     for dataset in datasets:
         for loss in losses:
             for gamma in gammas:
                 for method in methods:
+                    if method == "xgboost" and gamma != 1.0:
+                        continue
                     exp_id = "{}_{}_{}_{}_1-9-24".format(dataset, method, loss, gamma)
                     script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                     with open(script_fn, "w") as f:
+                        sbatch_preface = (
+                            SBATCH_PREFACE_CPU
+                            if method == "xgboost"
+                            else SBATCH_PREFACE
+                        )
                         print(
-                            SBATCH_PREFACE.format(
+                            sbatch_preface.format(
                                 exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
                             ),
                             file=f,
@@ -117,18 +148,25 @@ def generate_homoscedastic_example_runs():
     seed = 0
     gammas = [1.0, 2.0, 4.0, 8.0, 16.0]
     losses = ["squared_loss"]
-    methods = ["joint_ru_regression", "ru_regression"]
+    methods = ["joint_ru_regression", "ru_regression", "xgboost"]
 
     for loss in losses:
         for gamma in gammas:
             for method in methods:
+                if method == "xgboost" and gamma != 1.0:
+                    continue
                 exp_id = "homoscedastic_example_{}_{}_{}_12-26-23".format(
                     method, loss, gamma
                 )
                 script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                 with open(script_fn, "w") as f:
+                    sbatch_preface = (
+                        SBATCH_PREFACE_CPU
+                        if method == "xgboost"
+                        else SBATCH_PREFACE
+                    )
                     print(
-                        SBATCH_PREFACE.format(
+                        sbatch_preface.format(
                             exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
                         ),
                         file=f,
@@ -145,18 +183,25 @@ def generate_heteroscedastic_example_runs():
     seed = 0
     gammas = [1.0, 2.0, 4.0, 8.0, 16.0]
     losses = ["squared_loss"]
-    methods = ["joint_ru_regression", "ru_regression"]
+    methods = ["joint_ru_regression", "ru_regression", "xgboost"]
 
     for loss in losses:
         for gamma in gammas:
             for method in methods:
+                if method == "xgboost" and gamma != 1.0:
+                    continue
                 exp_id = "heteroscedastic_example_{}_{}_{}_12-26-23".format(
                     method, loss, gamma
                 )
                 script_fn = os.path.join(OUTPUT_PATH, "{}.sh".format(exp_id))
                 with open(script_fn, "w") as f:
+                    sbatch_preface = (
+                        SBATCH_PREFACE_CPU
+                        if method == "xgboost"
+                        else SBATCH_PREFACE
+                    )
                     print(
-                        SBATCH_PREFACE.format(
+                        sbatch_preface.format(
                             exp_id, OUTPUT_PATH, exp_id, OUTPUT_PATH, exp_id
                         ),
                         file=f,
@@ -170,7 +215,7 @@ def generate_heteroscedastic_example_runs():
 
 
 generate_severe_mimic_runs()
-generate_survey_runs()
-generate_survey_nn_runs()
-generate_homoscedastic_example_runs()
-generate_heteroscedastic_example_runs()
+# generate_survey_runs()
+# generate_survey_nn_runs()
+# generate_homoscedastic_example_runs()
+# generate_heteroscedastic_example_runs()
