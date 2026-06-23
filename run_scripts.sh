@@ -3,8 +3,6 @@
 rm -rf scripts
 mkdir scripts
 python generate_sbatches.py
-rm -rf /scratch/users/rsahoo/models
-rm -rf /scratch/users/rsahoo/runs
 rm -rf results
 mkdir results
 

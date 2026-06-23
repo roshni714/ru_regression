@@ -30,8 +30,11 @@ class RockafellarUryasevModel(LightningModule):
             torch.nn.Linear(64, 1),
         )
 
+        self.y_scale = y_scale
+        self.y_mean = y_mean
+
         self.loss = loss
-        self.mse = GenericLoss("squared_loss", y_scale=y_scale)
+        self.mse = GenericLoss("squared_loss", y_mean=y_mean, y_scale=y_scale)
 
 
         self.normalize = normalize
@@ -121,15 +124,15 @@ class RockafellarUryasevModel(LightningModule):
                 )
 
             inner_loss = self.loss.inner_loss(
-                y[bootstrap_sample, :],
-                h_out[bootstrap_sample, :],
+                y[bootstrap_sample, :] * self.y_scale + self.y_mean,
+                h_out[bootstrap_sample, :] * self.y_scale + self.y_mean,
                 r[bootstrap_sample, :],
             )
             ru_loss = self.loss(
                 x[bootstrap_sample, :],
-                y[bootstrap_sample, :],
-                h_out[bootstrap_sample, :],
-                alpha_out[bootstrap_sample, :],
+                y[bootstrap_sample, :] * self.y_scale + self.y_mean,
+                h_out[bootstrap_sample, :] * self.y_scale + self.y_mean,
+                alpha_out[bootstrap_sample, :] * self.y_scale + self.y_mean,
                 r[bootstrap_sample, :],
             )
 
@@ -144,8 +147,8 @@ class RockafellarUryasevModel(LightningModule):
                 inner_loss_sums[i] = inner_loss.mean().item()
 
 
-        inner_loss = self.loss.inner_loss(y, h_out, r)
-        ru_loss = self.loss(x, y, h_out, alpha_out, r)
+        inner_loss = self.loss.inner_loss(y * self.y_scale + self.y_mean, h_out * self.y_scale + self.y_mean, r)
+        ru_loss = self.loss(x, y * self.y_scale + self.y_mean, h_out * self.y_scale + self.y_mean, alpha_out, r)
         if self.loss.loss_name == "poisson_nll":
             mse_loss = self.mse(torch.exp(h_out), y, r)
         else:

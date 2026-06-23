@@ -1,36 +1,40 @@
 import numpy as np
 import loss
+from xgboost import callback
 from xgboost import XGBRegressor
 from data_loaders.dataloader_utils import unpack_tensors
 from loss import compute_losses
 
 
 class XGBoostModel:
-    def __init__(self, loss, epochs, seed):
+    def __init__(self, loss, epochs, seed, y_mean, y_scale=1.0):
         self.loss = loss
         self.epochs = int(epochs)
         self.seed = seed
+        self.y_mean = y_mean
+        self.y_scale = y_scale
         self.model = None
 
     def _get_objective(self):
 
-        def weighted_mse_eval(preds, dtrain, weights):
+        def weighted_mse_eval(dtrain, preds, weights):
             labels = dtrain
-            l = ((preds - labels)**2 * weights).mean()
+            l = ((preds - labels)**2 * weights).sum()/weights.sum()
+
             return l
         
-        def weighted_poisson_nll_eval(preds, dtrain, weights):
+        def weighted_poisson_nll_eval(dtrain, preds, weights):
             labels = dtrain
-            l = (loss.poisson_nll_loss(preds, labels) * weights).mean()
+            l = ((-preds * labels + np.exp(preds)) * weights).sum()/weights.sum()
             return l
         
 
-        def weighted_mse_loss(preds, labels, weights):
+        def weighted_mse_loss(labels, preds, weights):
             grad = 2 * (preds - labels) * weights
-            hess = 2 * weights
+            hess = 2 * np.ones_like(labels) * weights
             return grad, hess
                 
-        def weighted_poisson_nll_loss(preds, labels, weights):
+        def weighted_poisson_nll_loss(labels, preds, weights):
             grad = (np.exp(preds) - labels) * weights
             hess = np.exp(preds) * weights
             return grad, hess
@@ -46,26 +50,35 @@ class XGBoostModel:
         X_val, y_val, r_val = unpack_tensors(val_loader)
 
         if r_train is None:
-            r_train = np.ones_like(y_train)/len(y_train)
+            r_train = np.ones_like(y_train)
         if r_val is None:
-            r_val = np.ones_like(y_val)/len(y_val)
+            r_val = np.ones_like(y_val)
 
         objective, eval_metric = self._get_objective()
 
+        if X_train.shape[1] == 1:
+            max_depth = 3
+        else:
+            max_depth = 6
+
         self.model = XGBRegressor(
-            objective=objective,
-            n_estimators=self.epochs,
+            objective= lambda dtrain, preds: objective(dtrain, preds, r_train.flatten()),
             random_state=self.seed,
-            eval_metric= lambda preds, dtrain: eval_metric(preds, dtrain, r_val.flatten()))
+            n_estimators=5000,
+            learning_rate=0.001,
+            eval_metric= lambda dtrain, preds: eval_metric(dtrain, preds, r_val.flatten()),
+            disable_default_eval_metric=True,
+            max_depth=max_depth,
+        )
 
         self.model.fit(
             X_train,
             y_train.flatten(),
-            sample_weight=r_train,
+            verbose=True,
             eval_set=[(X_val, y_val.flatten())],
-            verbose=False,
+            early_stopping_rounds=20,
             )
-
+        
         return self
 
     def predict(self, X):
@@ -73,16 +86,19 @@ class XGBoostModel:
             raise RuntimeError(
                 "XGBoost model must be fit before calling predict"
             )
-        return self.model.predict(X).reshape(-1, 1)
+        return self.model.predict(X, iteration_range=(0, self.model.best_iteration + 1)).reshape(-1, 1)
 
     def summarize_test(self, test_loader, n_bootstrap=500):
+        print("Testing...")
         X, y_true, r = unpack_tensors(test_loader)
         y_hat = self.predict(X)
 
         inner_loss, mse_loss = compute_losses(
             y_hat=y_hat,
             y_true=y_true,
+            y_mean=self.y_mean,
             loss_name=self.loss,
+            y_scale=self.y_scale
         )
         ru_loss = inner_loss
 

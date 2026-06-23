@@ -25,7 +25,9 @@ class JointRockafellarUryasevModel(LightningModule):
         #        pdb.set_trace()
         self.alpha = torch.nn.Parameter(torch.zeros(1))
         self.loss = loss
-        self.mse = GenericLoss("squared_loss", y_scale=y_scale)
+        self.mse = GenericLoss("squared_loss", y_mean=y_mean, y_scale=y_scale)
+        self.y_scale = y_scale
+        self.y_mean = y_mean
 
         self.normalize = normalize
 
@@ -112,15 +114,15 @@ class JointRockafellarUryasevModel(LightningModule):
                 )
 
             inner_loss = self.loss.inner_loss(
-                y[bootstrap_sample, :],
-                h_out[bootstrap_sample, :],
+                y[bootstrap_sample, :] * self.y_scale + self.y_mean,
+                h_out[bootstrap_sample, :] * self.y_scale + self.y_mean,
                 r[bootstrap_sample, :],
             )
             ru_loss = self.loss(
                 x[bootstrap_sample, :],
-                y[bootstrap_sample, :],
-                h_out[bootstrap_sample, :],
-                self.alpha,
+                y[bootstrap_sample, :] * self.y_scale + self.y_mean,
+                h_out[bootstrap_sample, :] * self.y_scale + self.y_mean,
+                self.alpha * self.y_scale + self.y_mean,
                 r[bootstrap_sample, :],
             )
 
@@ -136,8 +138,8 @@ class JointRockafellarUryasevModel(LightningModule):
                 inner_loss_sums[i] = inner_loss.mean().item()
 
 
-        inner_loss = self.loss.inner_loss(y, h_out, r)
-        ru_loss = self.loss(x, y, h_out, self.alpha, r)
+        inner_loss = self.loss.inner_loss(y * self.y_scale + self.y_mean, h_out * self.y_scale + self.y_mean, r)
+        ru_loss = self.loss(x, y * self.y_scale + self.y_mean, h_out * self.y_scale + self.y_mean, self.alpha, r)
         if self.loss.loss_name == "poisson_nll":
             mse_loss = self.mse(torch.exp(h_out), y, r)
         else:

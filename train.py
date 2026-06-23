@@ -61,7 +61,7 @@ def objective(
     )
 
     if method == "xgboost":
-        model = XGBoostModel(loss=loss, epochs=epochs, seed=seed)
+        model = XGBoostModel(loss=loss, epochs=epochs, seed=seed, y_mean=y_mean, y_scale=y_std)
         model.fit(train_loader=train, val_loader=val)
 
         res = []

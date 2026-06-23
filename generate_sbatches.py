@@ -4,7 +4,7 @@ import os
 
 
 SBATCH_PREFACE = """#!/bin/bash
-#SBATCH -t 4:00:00
+#SBATCH -t 1:00:00
 #SBATCH -p gpu
 #SBATCH -c 1
 #SBATCH -G 1
@@ -15,9 +15,10 @@ SBATCH_PREFACE = """#!/bin/bash
 """
 
 SBATCH_PREFACE_CPU = """#!/bin/bash
-#SBATCH -t 4:00:00
+#SBATCH -t 1:00:00
 #SBATCH -p normal
 #SBATCH -c 1
+#SBATCH --mem 20GB
 #SBATCH --ntasks-per-node=1
 #SBATCH --job-name="{}.sh"
 #SBATCH --error="{}/{}_err.log"

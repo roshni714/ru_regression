@@ -12,7 +12,9 @@ def poisson_nll(y_hat, y_true):
     return -y_hat * y_true + torch.exp(y_hat)
 
 
-def compute_losses(y_hat, y_true, loss_name):
+def compute_losses(y_hat, y_true, y_mean, y_scale, loss_name):
+    y_hat = y_hat * y_scale + y_mean
+    y_true = y_true * y_scale + y_mean
     if loss_name == "squared_loss":
         inner_loss = (y_hat - y_true) ** 2
         mse_loss = inner_loss
@@ -60,16 +62,17 @@ class RockafellarUryasevLoss:
 
 
 class GenericLoss:
-    def __init__(self, loss, y_scale=None):
+    def __init__(self, loss, y_mean=None, y_scale=None):
         self.loss = LOSS_DIC[loss]
+        self.y_mean = y_mean
         self.y_scale = y_scale
         self.name = loss
 
     def __call__(self, y_hat, y_true, sample_weights=None):
         assert y_hat.shape == y_true.shape
         if self.y_scale is not None:
-            rescale_y_hat = self.y_scale * y_hat
-            rescale_y_true = self.y_scale * y_true
+            rescale_y_hat = self.y_scale * y_hat + self.y_mean
+            rescale_y_true = self.y_scale * y_true + self.y_mean
             l = self.loss(rescale_y_hat, rescale_y_true)
         else:
             l = self.loss(y_hat, y_true)
