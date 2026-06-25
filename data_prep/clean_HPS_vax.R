@@ -3,8 +3,6 @@ rm(list = ls())
 library(data.table)
 library(lubridate)
 
-setwd("~/Documents/Stanford/Projects/Multimodal Surveys/")
-
 df <- NULL
 for (i in 1:57) {
   message(i)

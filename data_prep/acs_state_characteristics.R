@@ -2,8 +2,6 @@ library(tidycensus)
 library(magrittr)
 library(data.table)
 
-setwd("~/Documents/Stanford/Projects/Multimodal Surveys/")
-
 vars <- load_variables(year = 2022, dataset = "acs5/profile", cache = TRUE)
 
 var_list <- c("DP02_0016", "DP02_0026P", "DP02_0032P", "DP02_0040", "DP02_0060P", "DP02_0061P", "DP02_0062P", "DP02_0063P", "DP02_0064P",

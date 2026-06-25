@@ -3,8 +3,6 @@ rm(list = ls())
 library(tidyverse)
 library(data.table)
 
-setwd("~/Documents/Stanford/Projects/Multimodal Surveys")
-
 df <- haven::read_xpt("LLCP2021.XPT")
 df <- as.data.table(df)
 
