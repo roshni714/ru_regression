@@ -87,6 +87,9 @@ The repository includes Jupyter notebooks used to reproduce results from the pap
   - `figure-8-paper.ipynb`
 
 
+## Computation
+Each script can be run with 1 CPU and 1 GPU with 20 GB of RAM for a maximum of 1 hour total. Each script completes in roughly 15 minutes.
+
 To cite our work:
 ```
 @article{sahoo2022learning,
