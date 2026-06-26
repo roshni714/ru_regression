@@ -5,7 +5,7 @@
 This repository contains the code for replicating the figures and simulations in Learning from a Biased Sample, including an implementation of Rockafellar-Uryasev (RU) Regression.
 
 ## Data
-The MIMIC-III dataset can be obtained upon request [here](https://physionet.org/content/mimiciii/1.4/). The BRFSS 2021 dataset is publicly available [here](https://www.cdc.gov/brfss/annual_data/annual_2021.html), and the 2018 BRFSS Depression and Anxiety Module used in the paper is publicly available [here](https://www.cdc.gov/brfss/questionnaires/modules/category2018.htm). The HPS 2021 dataset is publicly available [here](https://www.census.gov/programs-surveys/household-pulse-survey/datasets.html). We provide R scripts for prepping the datasets in `data_preprocessing/`. A google drive folder with the raw and cleaned BRFSS and HPS datasets is provided [here](https://drive.google.com/drive/folders/1P8dnEGHoBycaVyp9iVcy5gpDc6wroOIh?usp=drive_link). Data dictionaries are available in in `data_dictionaries/`.
+The MIMIC-III dataset can be obtained upon request [here](https://physionet.org/content/mimiciii/1.4/). The BRFSS 2021 dataset is publicly available [here](https://www.cdc.gov/brfss/annual_data/annual_2021.html), and the 2018 BRFSS Depression and Anxiety Module used in the paper is publicly available [here](https://www.cdc.gov/brfss/questionnaires/modules/category2018.htm). The HPS 2021 dataset is publicly available [here](https://www.census.gov/programs-surveys/household-pulse-survey/datasets.html). We provide R scripts for prepping the datasets in `data_prep/`. A google drive folder with the raw and cleaned BRFSS and HPS datasets is provided [here](https://drive.google.com/drive/folders/1P8dnEGHoBycaVyp9iVcy5gpDc6wroOIh?usp=drive_link). Data dictionaries are available in in `data_dictionaries/`.
 
 ## Environment
 To setup the environment for running the code, edit the ``prefix``field of the environment.yml file to point to the directory of your conda environments. Then, run
@@ -56,7 +56,7 @@ ru_regression/
   - `modules/` - Model architectures
   - `train.py` - training pipeline
 - Data preparation.
-	- `data_preprocessing/`: Contains R scripts for cleaning raw data files.
+	- `data_prep/`: Contains R scripts for cleaning raw data files.
 	- `data_loaders/`: Contains dataset-specific loading utilities. Supports datasets including: MIMIC-III, BRFSS 2021, BRFSS Depression and Anxiety Module, HPS 2021
 - Replication of paper figures. The repository includes Jupyter notebooks used to reproduce results from the paper:
   - `figure-1-paper.ipynb`
