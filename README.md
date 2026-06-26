@@ -51,32 +51,14 @@ ru_regression/
 ├── environment.yml
 └── README.md
 ```
-
-### Core Methodology
-- Implements an RU-based regression objective as an alternative to standard regression risk minimization.
-- Main implementation components:
-  - `loss.py`
-  - `modules/`
-  - `train.py`
-
-### Training Pipeline
-- `train.py`
-  - Runs the model training procedure.
-  - Loads training data 
-  - Optimizes model parameters.
-  - Evaluates and saves results.
-
-### Data Handling
+- Main RU Regression learning methodology implemented in
+  - `loss.py` - RU loss implementation
+  - `modules/` - Model architectures
+  - `train.py` - training pipeline
+- Data preparation.
 	- `data_preprocessing/`: Contains R scripts for cleaning raw data files.
 	- `data_loaders/`: Contains dataset-specific loading utilities. Supports datasets including: MIMIC-III, BRFSS 2021, BRFSS Depression and Anxiety Module, HPS 2021
-
-### Experiments and Replication
-
-The repository includes Jupyter notebooks used to reproduce results from the paper:
-- `demo.ipynb`
-  - Minimal example demonstrating RU regression.
-
-- Figure replication notebooks:
+- Replication of paper figures. The repository includes Jupyter notebooks used to reproduce results from the paper:
   - `figure-1-paper.ipynb`
   - `figure-3-paper.ipynb`
   - `figure-4-paper.ipynb`
@@ -85,7 +67,7 @@ The repository includes Jupyter notebooks used to reproduce results from the pap
   - `figure-6-paper.ipynb`
   - `figure-7-paper.ipynb`
   - `figure-8-paper.ipynb`
-
+- Minimal example demonstrating RU regression: `demo.ipynb` 
 
 ## Computation
 Each script can be run with 1 CPU and 1 GPU with 20 GB of RAM for a maximum of 1 hour total. Each script completes in roughly 15 minutes.
