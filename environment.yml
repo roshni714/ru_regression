@@ -1,4 +1,4 @@
-name: torch
+name: ru_reg2
 channels:
   - pytorch
   - anaconda
